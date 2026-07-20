@@ -1,0 +1,56 @@
+name: doc-rag
+
+# Local infrastructure only (PLAN.md Phase 0A): web, api and worker run as host
+# Node processes through Nx. Credentials below are development-only and public.
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres # development-only credential
+      POSTGRES_DB: docrag
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d docrag']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+    networks:
+      - doc-rag
+
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:3.35.0
+    # --skipApiVersionCheck: the pinned Azurite predates the Azure SDK's newest
+    # API version; without it every SDK call is rejected.
+    command: azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --location /data --skipApiVersionCheck
+    ports:
+      - '10000:10000' # Blob
+      - '10001:10001' # Queue
+    volumes:
+      - azurite-data:/data
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "require('net').connect(10000,'127.0.0.1').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+    networks:
+      - doc-rag
+
+volumes:
+  postgres-data:
+  azurite-data:
+
+networks:
+  doc-rag:
