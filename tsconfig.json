@@ -23,6 +23,24 @@
     },
     {
       "path": "./libs/database"
+    },
+    {
+      "path": "./libs/storage"
+    },
+    {
+      "path": "./libs/document-processing"
+    },
+    {
+      "path": "./libs/pdf-processing"
+    },
+    {
+      "path": "./libs/chunking"
+    },
+    {
+      "path": "./libs/embeddings"
+    },
+    {
+      "path": "./libs/queue"
     }
   ],
   "compilerOptions": {}

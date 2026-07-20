@@ -5,7 +5,32 @@
     "types": ["node"]
   },
   "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.spec.ts", "src/**/*.test.ts"],
   "references": [
+    {
+      "path": "../../libs/queue/tsconfig.lib.json"
+    },
+    {
+      "path": "../../libs/chunking/tsconfig.lib.json"
+    },
+    {
+      "path": "../../libs/storage/tsconfig.lib.json"
+    },
+    {
+      "path": "../../libs/database/tsconfig.lib.json"
+    },
+    {
+      "path": "../../libs/contracts/tsconfig.lib.json"
+    },
+    {
+      "path": "../../libs/pdf-processing/tsconfig.lib.json"
+    },
+    {
+      "path": "../../libs/document-processing/tsconfig.lib.json"
+    },
+    {
+      "path": "../../libs/embeddings/tsconfig.lib.json"
+    },
     {
       "path": "../../libs/config/tsconfig.lib.json"
     }

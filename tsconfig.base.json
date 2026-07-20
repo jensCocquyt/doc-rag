@@ -22,6 +22,12 @@
     "paths": {
       "@doc-rag/contracts": ["./libs/contracts/src/index.ts"],
       "@doc-rag/config": ["./libs/config/src/index.ts"],
+      "@doc-rag/chunking": ["./libs/chunking/src/index.ts"],
+      "@doc-rag/document-processing": ["./libs/document-processing/src/index.ts"],
+      "@doc-rag/embeddings": ["./libs/embeddings/src/index.ts"],
+      "@doc-rag/pdf-processing": ["./libs/pdf-processing/src/index.ts"],
+      "@doc-rag/queue": ["./libs/queue/src/index.ts"],
+      "@doc-rag/storage": ["./libs/storage/src/index.ts"],
       "@doc-rag/testing": ["./libs/testing/src/index.ts"],
       "@doc-rag/database": ["./libs/database/src/index.ts"]
     }

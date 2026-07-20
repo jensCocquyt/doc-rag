@@ -1,0 +1,121 @@
+# Phase 3 — PDF ingestion (same branch/PR as Phase 2, per Jens)
+
+## Plan
+
+- [x] Deps: `pdfjs-dist`, `ai`, `@ai-sdk/azure`; dev `pdf-lib` (test fixture PDFs).
+- [x] `libs/document-processing`: `NormalizedDocumentElement`, `PdfSourceLocation`,
+      `DocumentParser` interface, MIME-keyed `ParserRegistry`.
+- [x] `libs/pdf-processing`: pdfjs-based parser — pages, text order, normalized
+      (0..1) polygons, page dims, font-size heading heuristic. Golden tests with
+      pdf-lib-generated fixtures.
+- [x] `libs/chunking`: deterministic chunker — ~650-token target (chars/4
+      approximation), never crosses pages, heading context trail, overlap only
+      when splitting long runs, sha256 content hashes.
+- [x] `libs/embeddings`: `EmbeddingService`; `AzureOpenAiEmbeddingService`
+      (AI SDK `embedMany`, batched) + `DeterministicEmbeddingService`
+      (explicit `AI_PROVIDER=fake` for local/CI — never a silent fallback).
+- [x] `libs/queue`: consumer with visibility renewal, dequeue-count retries
+      with backoff, poison-queue move. Azurite integration tests.
+- [x] `libs/storage`: add server-side `writeObject` (normalized artifact
+      persistence from the worker).
+- [x] `libs/config`: worker env — artifacts container, poison queue, visibility/
+      dequeue settings, chunk/embedding settings, AI_PROVIDER (+ conditional
+      AZURE_OPENAI_* requirements).
+- [x] `libs/database`: job findById/markProcessing/markSucceeded/markFailed;
+      version findById/updateParseResult; document setContentHash.
+- [x] `apps/ingestion-worker`: pipeline — decode → load → processing → read blob
+      → limits → parse → persist normalized artifact → chunk → embed → wipe +
+      insert chunks → ready; idempotent replays; poison marks document failed.
+      Integration tests incl. retry/idempotency and 100-page PDF.
+- [x] Verify: pnpm check + typecheck + test:integration; browser E2E:
+      upload PDF → status ready (fake embeddings).
+
+## Phase 3 review
+
+- 13 projects green on build/lint/test/typecheck; 32 integration tests pass
+  (queue retry/poison, worker pipeline incl. 100-page PDF in ~0.8 s).
+- Browser E2E: uploaded PDF went uploading → queued → processing → ready with
+  all three apps running; Jens's real 13-page PDF produced 17 chunks with
+  heading contexts, page locators, per-line polygons and embeddings; a fake
+  "PDF" (zeros) failed permanently with parse_failed. Backlog messages from
+  Phase 2 were consumed correctly on worker start (durable handoff proven).
+- Fixed along the way: Phase 2's API integration test drained the shared dev
+  queue (stranding real queued documents) — now uses an isolated per-run queue
+  and cleans up its document rows. Stranded dev documents repaired by
+  re-enqueueing.
+- Known limitations: no /documents/:id/retry endpoint yet (a lost queue
+  message strands a 'queued' document until re-enqueued); scanned PDFs
+  rejected (no_text_content, no OCR by design); token counts are chars/4;
+  heading detection is font-size heuristic only; document DTO does not expose
+  the job's internal error code.
+
+## Decisions
+
+- Token counts are a chars/4 approximation (no tokenizer dependency in POC);
+  revisit when real evaluation lands (Phase 4+).
+- Normalized artifact JSON goes to a separate `artifacts` container keyed
+  `.../versions/{n}/normalized.json`; chunks are rebuildable from it.
+- Retry model: wipe-and-rewrite chunks per version before insert (unique
+  (version, sequence) index is the second guard).
+- Transient failure → job back to `queued` + error recorded, message redelivered
+  by visibility timeout; dequeueCount ≥ max → poison queue + job `poisoned` +
+  document `failed`.
+
+# Phase 2 — Blob Storage abstraction and direct upload
+
+Branch: `feat/phase-2-storage-upload`
+
+## Plan
+
+- [x] `libs/storage` (new): `ObjectStorage` interface + `AzureBlobObjectStorage`
+      (SAS-scoped upload target, verify, read stream, preview target, delete;
+      dev-only Azurite CORS helper). Integration tests against Azurite incl.
+      SAS scoping, expiry, 100 MB smoke.
+- [x] `libs/config`: extend API env — originals container, ingestion queue name,
+      MAX_FILE_SIZE_BYTES, UPLOAD_URL_TTL_SECONDS, PREVIEW_URL_TTL_SECONDS.
+- [x] `libs/contracts`: upload-session request/response, document DTO,
+      complete-upload response, ingestion queue message schema (+ base64
+      encode/decode helpers). Unit tests.
+- [x] `libs/database`: POC tenant/user constants moved to lib; new
+      DocumentVersionRepository + IngestionJobRepository (idempotent create);
+      DocumentRepository.setActiveVersion.
+- [x] `apps/api`: DocumentsModule — POST /documents/upload-sessions,
+      POST /documents/:id/complete-upload (idempotent, verify-before-queue),
+      GET /documents, GET /documents/:id, DELETE /documents/:id (soft).
+      Queue message sent only after storage verification. Integration tests
+      via app.inject.
+- [x] `apps/web`: minimal documents page — multi-file picker, direct XHR PUT
+      to SAS URL with progress, complete-upload call, list + status polling,
+      delete. Vite proxy /documents → API. No new deps.
+- [x] Docs: .env.example, CLAUDE.md (libs/storage exists).
+- [x] Verify: pnpm check, typecheck, test:integration, browser 100 MB upload.
+
+## Decisions
+
+- SAS URL is scoped to one exact server-generated blob name (create+write only)
+  → client cannot choose storage keys.
+- Storage key: `tenants/{tenantId}/documents/{documentId}/versions/{n}/original.pdf`.
+- Ingestion job idempotency key = document version id (unique index) →
+  repeated complete-upload cannot duplicate jobs; duplicate queue deliveries
+  are tolerated (worker is idempotent by design in Phase 3).
+- Queue message is base64(JSON), schema + codec shared in contracts.
+- Soft delete keeps the blob (lifecycle cleanup is a later phase).
+- Content hashing deferred to the worker (file bytes never touch the API).
+- No global /api prefix yet; Vite dev proxy forwards /documents and /health.
+- Azurite CORS is set best-effort at API bootstrap in development only; Azure
+  storage-account CORS belongs to Bicep in Phase 8.
+
+## Review
+
+- All checks green: `pnpm check` (build/lint/test, 8 projects), `typecheck`,
+  `pnpm test:integration` (storage 4, api 8 incl. 6 new documents tests,
+  database, testing).
+- Browser-verified: 100 MB synthetic PDF uploaded from the real page at
+  localhost:4200 → CORS preflight + PUT direct to Azurite :10000 (SAS `sp=cw`,
+  exact blob path), complete-upload → status `queued`; queue message decoded
+  and matched job/version ids in the integration test. API node process at
+  ~86 MB working set after the 100 MB upload.
+- Known limitations: no retry endpoint yet (Phase 3), preview endpoint not
+  exposed over HTTP (lib support only), duplicate queue message possible on
+  concurrent complete-upload (worker idempotency handles it), stuck
+  `uploading` rows have no janitor/expiry yet.

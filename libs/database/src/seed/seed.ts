@@ -3,10 +3,11 @@ import { createDatabase, createPool } from '../lib/client';
 import { EMBEDDING_DIMENSIONS } from '../lib/schema';
 import * as schema from '../lib/schema';
 import { DrizzleChunkRepository } from '../lib/repositories/chunk.repository';
+import { POC_TENANT_ID, POC_USER_ID } from '../lib/poc';
 
 // Fixed IDs make the seed idempotent (PLAN.md: seed one POC tenant and user).
-export const SEED_TENANT_ID = '00000000-0000-4000-8000-000000000001';
-export const SEED_USER_ID = '00000000-0000-4000-8000-000000000002';
+export const SEED_TENANT_ID = POC_TENANT_ID;
+export const SEED_USER_ID = POC_USER_ID;
 const SEED_DOCUMENT_ID = '00000000-0000-4000-8000-000000000003';
 const SEED_VERSION_ID = '00000000-0000-4000-8000-000000000004';
 

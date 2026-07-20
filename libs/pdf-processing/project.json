@@ -1,0 +1,8 @@
+{
+  "name": "pdf-processing",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/pdf-processing/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {}
+}

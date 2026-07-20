@@ -1,26 +1,43 @@
-import { render } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
+import { render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 
 import App from './app';
 
 describe('App', () => {
-  it('should render successfully', () => {
-    const { baseElement } = render(
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>,
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        Response.json({
+          documents: [
+            {
+              id: '00000000-0000-4000-8000-000000000003',
+              fileName: 'seed-sample.pdf',
+              mimeType: 'application/pdf',
+              sizeBytes: 12345,
+              status: 'ready',
+              createdAt: '2026-01-01T00:00:00.000Z',
+              modifiedAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        }),
+      ),
     );
-    expect(baseElement).toBeTruthy();
   });
 
-  it('should have a greeting as the title', () => {
-    const { getAllByText } = render(
-      <BrowserRouter>
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('renders the documents page with the upload control', async () => {
+    render(
+      <MemoryRouter>
         <App />
-      </BrowserRouter>,
+      </MemoryRouter>,
     );
-    expect(
-      getAllByText(new RegExp('Welcome web', 'gi')).length > 0,
-    ).toBeTruthy();
+    expect(screen.getByText(/Upload PDF files/i)).toBeTruthy();
+    await waitFor(() =>
+      expect(screen.getByText('seed-sample.pdf')).toBeTruthy(),
+    );
   });
 });

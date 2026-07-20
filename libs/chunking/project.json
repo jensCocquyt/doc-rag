@@ -1,0 +1,8 @@
+{
+  "name": "chunking",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/chunking/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {}
+}

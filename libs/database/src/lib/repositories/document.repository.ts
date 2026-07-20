@@ -28,6 +28,12 @@ export interface DocumentRepository {
     id: string,
     status: DocumentStatus,
   ): Promise<void>;
+  setActiveVersion(
+    tenantId: string,
+    id: string,
+    versionId: string,
+  ): Promise<void>;
+  setContentHash(tenantId: string, id: string, hash: string): Promise<void>;
   softDelete(tenantId: string, id: string): Promise<void>;
 }
 
@@ -81,6 +87,28 @@ export class DrizzleDocumentRepository implements DocumentRepository {
     await this.db
       .update(documents)
       .set({ status, modifiedAt: new Date() })
+      .where(and(eq(documents.id, id), eq(documents.tenantId, tenantId)));
+  }
+
+  async setActiveVersion(
+    tenantId: string,
+    id: string,
+    versionId: string,
+  ): Promise<void> {
+    await this.db
+      .update(documents)
+      .set({ activeVersionId: versionId, modifiedAt: new Date() })
+      .where(and(eq(documents.id, id), eq(documents.tenantId, tenantId)));
+  }
+
+  async setContentHash(
+    tenantId: string,
+    id: string,
+    hash: string,
+  ): Promise<void> {
+    await this.db
+      .update(documents)
+      .set({ contentHash: hash, modifiedAt: new Date() })
       .where(and(eq(documents.id, id), eq(documents.tenantId, tenantId)));
   }
 

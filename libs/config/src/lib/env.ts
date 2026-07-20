@@ -72,11 +72,66 @@ const baseEnvSchema = z.object({
     .min(1, 'AZURE_STORAGE_QUEUE_CONNECTION_STRING is required'),
 });
 
-export const apiEnvSchema = baseEnvSchema.extend({
-  PORT: z.coerce.number().int().min(1).max(65535).default(3000),
+const storageEnvSchema = baseEnvSchema.extend({
+  AZURE_STORAGE_BLOB_CONTAINER_ORIGINALS: z.string().min(1).default('originals'),
+  AZURE_STORAGE_QUEUE_INGESTION: z.string().min(1).default('rag-ingestion'),
+  MAX_FILE_SIZE_BYTES: z.coerce.number().int().positive().default(104857600),
 });
 
-export const workerEnvSchema = baseEnvSchema;
+export const apiEnvSchema = storageEnvSchema.extend({
+  PORT: z.coerce.number().int().min(1).max(65535).default(3000),
+  UPLOAD_URL_TTL_SECONDS: z.coerce.number().int().positive().default(900),
+  PREVIEW_URL_TTL_SECONDS: z.coerce.number().int().positive().default(300),
+});
+
+export const workerEnvSchema = storageEnvSchema
+  .extend({
+    AZURE_STORAGE_BLOB_CONTAINER_ARTIFACTS: z
+      .string()
+      .min(1)
+      .default('artifacts'),
+    AZURE_STORAGE_QUEUE_POISON: z
+      .string()
+      .min(1)
+      .default('rag-ingestion-poison'),
+    QUEUE_VISIBILITY_TIMEOUT_SECONDS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(300),
+    QUEUE_MAX_DEQUEUE_COUNT: z.coerce.number().int().positive().default(5),
+    QUEUE_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(2000),
+    MAX_PDF_PAGES: z.coerce.number().int().positive().default(500),
+    CHUNK_TARGET_TOKENS: z.coerce.number().int().positive().default(650),
+    CHUNK_OVERLAP_TOKENS: z.coerce.number().int().positive().default(80),
+    EMBEDDING_BATCH_SIZE: z.coerce.number().int().positive().default(64),
+    /**
+     * 'azure' is the real provider; 'fake' selects deterministic pseudo-
+     * embeddings for local/CI runs without credentials. Always an explicit
+     * choice — a missing key with AI_PROVIDER=azure is a startup error, not
+     * a downgrade.
+     */
+    AI_PROVIDER: z.enum(['azure', 'fake']).default('azure'),
+    AZURE_OPENAI_RESOURCE_NAME: z.string().optional(),
+    AZURE_OPENAI_API_KEY: z.string().optional(),
+    AZURE_OPENAI_EMBEDDING_DEPLOYMENT: z.string().optional(),
+  })
+  .superRefine((env, ctx) => {
+    if (env.AI_PROVIDER !== 'azure') return;
+    for (const key of [
+      'AZURE_OPENAI_RESOURCE_NAME',
+      'AZURE_OPENAI_API_KEY',
+      'AZURE_OPENAI_EMBEDDING_DEPLOYMENT',
+    ] as const) {
+      if (!env[key]) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [key],
+          message: `${key} is required when AI_PROVIDER=azure`,
+        });
+      }
+    }
+  });
 
 export type ApiEnv = z.infer<typeof apiEnvSchema>;
 export type WorkerEnv = z.infer<typeof workerEnvSchema>;

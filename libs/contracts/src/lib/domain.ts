@@ -1,5 +1,11 @@
 import { z } from 'zod';
 
+/**
+ * text-embedding-3-small dimensionality; must match the pgvector column.
+ * Changing it requires a reindex.
+ */
+export const EMBEDDING_DIMENSIONS = 1536;
+
 export const documentStatusSchema = z.enum([
   'uploading',
   'uploaded',
