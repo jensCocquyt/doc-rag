@@ -14,6 +14,8 @@ Document Chat RAG — production-oriented POC. Upload PDFs, ask questions, get s
 pnpm install          # install dependencies
 pnpm infra:up         # start PostgreSQL (pgvector) + Azurite via Docker Compose
 cp .env.example .env  # local env; api/worker load it automatically
+pnpm db:migrate       # apply database migrations
+pnpm db:seed          # seed the POC tenant, user and a sample document
 pnpm dev              # start web, api and worker through Nx (hot reload)
 ```
 
@@ -32,6 +34,9 @@ pnpm infra:logs         # follow infrastructure logs
 pnpm infra:reset        # stop containers AND delete volumes (explicit only)
 
 pnpm dev                # web + api + worker via Nx
+pnpm db:generate        # generate a migration from schema changes (drizzle-kit)
+pnpm db:migrate         # apply migrations
+pnpm db:seed            # idempotent local seed
 pnpm check              # nx run-many -t build lint test
 pnpm build / lint / test
 pnpm test:integration   # needs running infrastructure (pnpm infra:up)

@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Production-oriented RAG POC with a hard Azure budget of €130 per month.
 
-**Current state:** Phase 0 (Nx workspace, apps, libs, health checks, CI) and Phase 0A (Docker Compose replaced Aspire) are complete. The full build plan, phased implementation guide, domain model, API outline and acceptance criteria live in `docs/PLAN.md`. Read it before implementing anything. Implement one phase per session; do not expand scope beyond the current phase. Architecture decisions are recorded in `docs/decisions/`.
+**Current state:** Phase 0 (Nx workspace, apps, libs, health checks, CI), Phase 0A (Docker Compose replaced Aspire) and Phase 1 (Drizzle schema, migrations, repositories, seed) are complete. The full build plan, phased implementation guide, domain model, API outline and acceptance criteria live in `docs/PLAN.md`. Read it before implementing anything. Implement one phase per session; do not expand scope beyond the current phase. Architecture decisions are recorded in `docs/decisions/`.
 
 ## Stack
 
@@ -32,6 +32,7 @@ Production-oriented RAG POC with a hard Azure budget of €130 per month.
 - Affected only: `pnpm nx affected -t build lint test`
 - Single project test: `pnpm nx test config`; single test: append `-- --testNamePattern="..."`
 - Integration tests (need running infrastructure): `pnpm test:integration`
+- Database: `pnpm db:generate` (new migration from schema), `pnpm db:migrate`, `pnpm db:seed`
 - Local env: copy `.env.example` to `.env` (api/worker load it via dotenv; real env vars win)
 
 ## Non-negotiable rules
@@ -78,7 +79,8 @@ Nx monorepo layout (target structure, per `docs/PLAN.md`):
 - `libs/contracts` — shared Zod schemas and API DTOs (no duplicate DTO definitions).
 - `libs/config` — Zod-validated env loading (`loadApiEnv`/`loadWorkerEnv`, `normalizeDatabaseUrl`, `loadDotenv`).
 - `libs/testing` — integration-test helpers; integration specs run via `test-integration` targets.
-- `libs/domain`, `libs/database`, `libs/storage`, `libs/queue`, `libs/retrieval`, `libs/ai` — added in later phases.
+- `libs/database` — Drizzle schema (all PLAN §5 tables, pgvector + generated tsvector), migrations (`libs/database/migrations`), tenant-scoped repositories, idempotent seed. Chunks can never be inserted without a valid locator (enforced in `ChunkRepository`).
+- `libs/domain`, `libs/storage`, `libs/queue`, `libs/retrieval`, `libs/ai` — added in later phases.
 - `infra/azure` — explicit Bicep (Phase 8).
 
 Do not add an abstraction unless it protects a known external boundary or has more than one expected implementation.
