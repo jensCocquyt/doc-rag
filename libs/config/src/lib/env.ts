@@ -82,6 +82,10 @@ export const apiEnvSchema = storageEnvSchema.extend({
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   UPLOAD_URL_TTL_SECONDS: z.coerce.number().int().positive().default(900),
   PREVIEW_URL_TTL_SECONDS: z.coerce.number().int().positive().default(300),
+  RETRIEVAL_VECTOR_TOP_K: z.coerce.number().int().positive().default(20),
+  RETRIEVAL_TEXT_TOP_K: z.coerce.number().int().positive().default(20),
+  RETRIEVAL_FINAL_TOP_K: z.coerce.number().int().positive().default(8),
+  MAX_CONTEXT_TOKENS: z.coerce.number().int().positive().default(9000),
 });
 
 export const workerEnvSchema = storageEnvSchema
