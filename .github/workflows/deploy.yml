@@ -1,0 +1,135 @@
+# Azure deployment (PLAN.md Phase 8). Manual dispatch only: it requires the
+# one-time OIDC setup in infra/azure/README.md (no long-lived credentials are
+# stored — GitHub OIDC federation only).
+name: Deploy to Azure
+
+on:
+  workflow_dispatch:
+    inputs:
+      resourceGroup:
+        description: Target resource group (must exist)
+        required: true
+        default: rg-docrag-poc
+      deployAzureOpenAi:
+        description: Deploy Azure OpenAI account + model deployments
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency: deploy-azure
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      RG: ${{ inputs.resourceGroup }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - uses: nrwl/nx-set-shas@v4
+
+      - name: Quality gates
+        run: pnpm nx affected -t lint test build typecheck
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Validate Bicep
+        run: |
+          az deployment group validate \
+            --resource-group "$RG" \
+            --template-file infra/azure/main.bicep \
+            --parameters postgresPassword="${{ secrets.POSTGRES_PASSWORD }}" \
+              apiImage=docrag/api:${{ github.sha }} \
+              workerImage=docrag/worker:${{ github.sha }} \
+              webImage=docrag/web:${{ github.sha }} \
+              deployAzureOpenAi=${{ inputs.deployAzureOpenAi }}
+
+      - name: What-if
+        run: |
+          az deployment group what-if \
+            --resource-group "$RG" \
+            --template-file infra/azure/main.bicep \
+            --parameters postgresPassword="${{ secrets.POSTGRES_PASSWORD }}" \
+              apiImage=docrag/api:${{ github.sha }} \
+              workerImage=docrag/worker:${{ github.sha }} \
+              webImage=docrag/web:${{ github.sha }} \
+              deployAzureOpenAi=${{ inputs.deployAzureOpenAi }}
+
+      - name: Build application bundles
+        run: |
+          pnpm nx run api:build && pnpm nx run api:prune
+          pnpm nx run ingestion-worker:build && pnpm nx run ingestion-worker:prune
+          pnpm nx run web:build
+
+      - name: Resolve registry
+        id: acr
+        run: |
+          ACR_NAME=$(az acr list --resource-group "$RG" --query "[0].name" -o tsv)
+          if [ -z "$ACR_NAME" ]; then
+            # First deployment: create infra before images exist. Container
+            # apps will crash-loop until images are pushed below, then heal.
+            az deployment group create \
+              --resource-group "$RG" \
+              --template-file infra/azure/main.bicep \
+              --parameters postgresPassword="${{ secrets.POSTGRES_PASSWORD }}" \
+                apiImage=docrag/api:${{ github.sha }} \
+                workerImage=docrag/worker:${{ github.sha }} \
+                webImage=docrag/web:${{ github.sha }} \
+                deployAzureOpenAi=${{ inputs.deployAzureOpenAi }}
+            ACR_NAME=$(az acr list --resource-group "$RG" --query "[0].name" -o tsv)
+          fi
+          echo "name=$ACR_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push images (ACR build)
+        run: |
+          az acr build -r ${{ steps.acr.outputs.name }} -t docrag/api:${{ github.sha }} -f apps/api/Dockerfile .
+          az acr build -r ${{ steps.acr.outputs.name }} -t docrag/worker:${{ github.sha }} -f apps/ingestion-worker/Dockerfile .
+          az acr build -r ${{ steps.acr.outputs.name }} -t docrag/web:${{ github.sha }} -f apps/web/Dockerfile .
+
+      - name: Deploy Bicep with new images
+        run: |
+          az deployment group create \
+            --resource-group "$RG" \
+            --template-file infra/azure/main.bicep \
+            --parameters postgresPassword="${{ secrets.POSTGRES_PASSWORD }}" \
+              apiImage=docrag/api:${{ github.sha }} \
+              workerImage=docrag/worker:${{ github.sha }} \
+              webImage=docrag/web:${{ github.sha }} \
+              deployAzureOpenAi=${{ inputs.deployAzureOpenAi }}
+
+      - name: Run database migrations
+        run: |
+          PG_FQDN=$(az postgres flexible-server list --resource-group "$RG" --query "[0].fullyQualifiedDomainName" -o tsv)
+          DATABASE_URL="postgresql://docrag:${{ secrets.POSTGRES_PASSWORD }}@${PG_FQDN}:5432/docrag?sslmode=require" pnpm db:migrate
+          DATABASE_URL="postgresql://docrag:${{ secrets.POSTGRES_PASSWORD }}@${PG_FQDN}:5432/docrag?sslmode=require" pnpm db:seed
+
+      - name: Smoke test
+        run: |
+          API_URL=$(az deployment group show --resource-group "$RG" --name main --query "properties.outputs.apiUrl.value" -o tsv)
+          for i in $(seq 1 20); do
+            if curl -fsS "$API_URL/health" > /dev/null; then
+              echo "API healthy: $API_URL"
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "API did not become healthy" && exit 1
