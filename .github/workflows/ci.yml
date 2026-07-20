@@ -66,3 +66,53 @@ jobs:
       - name: Tear down infrastructure
         if: always()
         run: docker compose down -v
+
+  e2e:
+    runs-on: ubuntu-latest
+    env:
+      AI_PROVIDER: fake
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/docrag
+      AZURE_STORAGE_BLOB_CONNECTION_STRING: DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;
+      AZURE_STORAGE_QUEUE_CONNECTION_STRING: DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;QueueEndpoint=http://127.0.0.1:10001/devstoreaccount1;
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Start infrastructure
+        run: docker compose up -d --wait
+
+      - name: Apply database migrations
+        run: pnpm db:migrate
+
+      - name: Seed POC tenant and user
+        run: pnpm db:seed
+
+      - name: Install Playwright browser
+        run: npx playwright install chromium --with-deps
+
+      - name: Run end-to-end tests
+        run: pnpm nx run web-e2e:e2e
+
+      - name: Upload Playwright traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-output
+          path: dist/apps/web-e2e/output
+          retention-days: 7
+
+      - name: Show infrastructure logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Tear down infrastructure
+        if: always()
+        run: docker compose down -v

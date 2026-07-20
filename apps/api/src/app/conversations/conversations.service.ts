@@ -106,6 +106,7 @@ export class ConversationsService {
             documentId: citation.documentId,
             fileName: citation.fileName,
             page: locator.page,
+            polygons: locator.polygons,
             excerpt: locator.excerpt,
           };
         }),

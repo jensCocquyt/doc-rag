@@ -5,6 +5,7 @@ import {
   createUploadSession,
   deleteDocument,
   listDocuments,
+  retryDocument,
   uploadToStorage,
 } from './api-client';
 
@@ -93,8 +94,17 @@ export function DocumentsPage() {
     }
   };
 
+  const onRetry = async (id: string) => {
+    try {
+      await retryDocument(id);
+      await refresh();
+    } catch (error) {
+      setListError(error instanceof Error ? error.message : String(error));
+    }
+  };
+
   return (
-    <main style={{ maxWidth: 720, margin: '2rem auto', padding: '0 1rem' }}>
+    <main style={{ maxWidth: 720 }}>
       <h1>Documents</h1>
 
       <section>
@@ -142,6 +152,11 @@ export function DocumentsPage() {
                   <code>{doc.status}</code>
                 </td>
                 <td style={{ textAlign: 'right' }}>
+                  {doc.status === 'failed' && (
+                    <button type="button" onClick={() => void onRetry(doc.id)}>
+                      Retry
+                    </button>
+                  )}{' '}
                   <button type="button" onClick={() => void onDelete(doc.id)}>
                     Delete
                   </button>

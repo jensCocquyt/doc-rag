@@ -5,6 +5,10 @@
     "allowSyntheticDefaultImports": true,
     "strict": true,
     "lib": ["dom", "dom.iterable", "es2022"],
+    // Vite bundles this app; import.meta and bundler resolution are the
+    // correct model (the workspace default nodenext targets Node apps).
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "types": ["vite/client", "vitest"]
   },
   "files": [],

@@ -161,6 +161,67 @@ export class DocumentsService {
     return toDocumentDto({ ...document, status: 'queued' });
   }
 
+  async createPreviewUrl(
+    documentId: string,
+  ): Promise<{ url: string; expiresAt: string }> {
+    const document = await this.findDocumentOrThrow(documentId);
+    const version = await this.versions.findLatestByDocument(document.id);
+    if (!version) {
+      throw new NotFoundException({
+        code: 'missing_document_version',
+        message: 'Document has no stored file',
+      });
+    }
+    const target = await this.storage.createPreviewTarget(
+      version.storageKey,
+      this.env.PREVIEW_URL_TTL_SECONDS,
+    );
+    return { url: target.url, expiresAt: target.expiresAt.toISOString() };
+  }
+
+  /**
+   * User-requested reprocessing of a failed (or message-lost queued)
+   * document: requeues the existing job and re-sends the queue message after
+   * re-verifying the stored object. Idempotent like complete-upload.
+   */
+  async retry(documentId: string): Promise<DocumentDto> {
+    const document = await this.findDocumentOrThrow(documentId);
+    if (!['failed', 'queued', 'uploaded'].includes(document.status)) {
+      throw new ConflictException({
+        code: 'invalid_document_state',
+        message: `Cannot retry a document in status '${document.status}'`,
+      });
+    }
+    const version = await this.versions.findLatestByDocument(document.id);
+    if (!version) {
+      throw new InternalServerErrorException({
+        code: 'missing_document_version',
+        message: 'Document has no version record',
+      });
+    }
+    const verified = await this.storage.verifyObject(version.storageKey);
+    if (!verified.exists) {
+      throw new BadRequestException({
+        code: 'file_not_uploaded',
+        message: 'No stored file exists for this document',
+      });
+    }
+    const { job } = await this.jobs.createIfAbsent({
+      documentVersionId: version.id,
+      idempotencyKey: `ingest-${version.id}`,
+    });
+    await this.jobs.requeue(job.id);
+    await this.ingestionQueue.send({
+      type: 'ingest-document-version',
+      jobId: job.id,
+      tenantId: this.tenantId,
+      documentId: document.id,
+      documentVersionId: version.id,
+    });
+    await this.documents.setStatus(this.tenantId, document.id, 'queued');
+    return toDocumentDto({ ...document, status: 'queued' });
+  }
+
   async list(): Promise<DocumentDto[]> {
     const records = await this.documents.list(this.tenantId);
     return records.map(toDocumentDto);

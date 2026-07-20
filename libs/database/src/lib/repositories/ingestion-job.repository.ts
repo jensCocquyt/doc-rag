@@ -30,6 +30,8 @@ export interface IngestionJobRepository {
     errorCode: string,
     errorMessage: string,
   ): Promise<void>;
+  /** Puts a terminal job back in line for a user-requested retry. */
+  requeue(id: string): Promise<void>;
 }
 
 export class DrizzleIngestionJobRepository implements IngestionJobRepository {
@@ -79,6 +81,18 @@ export class DrizzleIngestionJobRepository implements IngestionJobRepository {
         errorCode: null,
         errorMessage: null,
         completedAt: new Date(),
+      })
+      .where(eq(ingestionJobs.id, id));
+  }
+
+  async requeue(id: string): Promise<void> {
+    await this.db
+      .update(ingestionJobs)
+      .set({
+        status: 'queued',
+        errorCode: null,
+        errorMessage: null,
+        completedAt: null,
       })
       .where(eq(ingestionJobs.id, id));
   }

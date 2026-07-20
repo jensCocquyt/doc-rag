@@ -1,3 +1,20 @@
+# Phase 6 — React UI + PDF viewer + e2e (feat/phase-6-react-ui)
+
+- [x] API additions: GET /documents/:id/preview-url, POST /documents/:id/retry
+      (requeue + resend, fixes lost-message stranding), polygons on CitationDto.
+- [x] Web: app shell (TanStack Query + routes), documents page retry button,
+      chat page (conversation list, scope selector, NDJSON streaming with pure
+      reducer, markdown, citation chips, stop/regenerate, states), lazy
+      react-pdf viewer with normalized-polygon highlights + excerpt.
+- [x] pdfjs-dist pinned to react-pdf's version (5.4.296); worker+viewer aligned.
+- [x] Fixed: nx project named 'ai' shadowed npm 'ai' package in the serve
+      executor's require overrides → renamed project to 'ai-lib'.
+- [x] Playwright e2e (apps/web-e2e): full happy path passes locally in real
+      Chromium — upload → ready → conversation → scope → streamed cited answer
+      → citation opens page 2 with highlight. CI e2e job added.
+- Known: viewer renders one page (no free scrolling); citation switching =
+  clicking another chip; fake answers are extractive.
+
 # Phase 5 — Streamed chat + validated citations (feat/phase-5-streamed-chat)
 
 - [x] libs/ai: AnswerGenerator/QueryRewriter/Summarizer interfaces; Azure impls

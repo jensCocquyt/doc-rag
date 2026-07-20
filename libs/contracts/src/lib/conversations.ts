@@ -38,6 +38,8 @@ export const citationDtoSchema = z.object({
   documentId: z.uuid(),
   fileName: z.string(),
   page: z.number().int().min(1),
+  /** Normalized 0..1 top-left polygons for viewer highlights. */
+  polygons: z.array(z.array(z.number())),
   excerpt: z.string(),
 });
 export type CitationDto = z.infer<typeof citationDtoSchema>;

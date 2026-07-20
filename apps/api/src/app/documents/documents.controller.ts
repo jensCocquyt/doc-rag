@@ -12,6 +12,7 @@ import {
   uploadSessionRequestSchema,
   type DocumentDto,
   type DocumentListResponse,
+  type PreviewUrlResponse,
   type UploadSessionResponse,
 } from '@doc-rag/contracts';
 import { DocumentsService } from './documents.service';
@@ -40,6 +41,19 @@ export class DocumentsController {
   @Get()
   async list(): Promise<DocumentListResponse> {
     return { documents: await this.documentsService.list() };
+  }
+
+  @Get(':id/preview-url')
+  async previewUrl(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<PreviewUrlResponse> {
+    return this.documentsService.createPreviewUrl(id);
+  }
+
+  @Post(':id/retry')
+  @HttpCode(200)
+  async retry(@Param('id', ParseUUIDPipe) id: string): Promise<DocumentDto> {
+    return this.documentsService.retry(id);
   }
 
   @Get(':id')
