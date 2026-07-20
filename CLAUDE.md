@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Production-oriented RAG POC with a hard Azure budget of €130 per month.
 
-**Current state:** Phase 0 (Nx workspace, apps, libs, health checks, CI), Phase 0A (Docker Compose replaced Aspire), Phase 1 (Drizzle schema, migrations, repositories, seed), Phase 2 (Blob storage abstraction, direct browser→Azurite upload, document endpoints) Phase 3 (PDF ingestion pipeline: parse → normalize → artifact → chunk → embed → ready, with retries and poison queue) Phase 4 (hybrid retrieval + eval harness) and Phase 5 (streamed chat with backend-validated citations: conversations API, NDJSON typed stream, cancel/retry/regenerate, history summarization) are complete. The full build plan, phased implementation guide, domain model, API outline and acceptance criteria live in `docs/PLAN.md`. Read it before implementing anything. Implement one phase per session; do not expand scope beyond the current phase. Architecture decisions are recorded in `docs/decisions/`.
+**Current state:** Phase 0 (Nx workspace, apps, libs, health checks, CI), Phase 0A (Docker Compose replaced Aspire), Phase 1 (Drizzle schema, migrations, repositories, seed), Phase 2 (Blob storage abstraction, direct browser→Azurite upload, document endpoints) Phase 3 (PDF ingestion pipeline: parse → normalize → artifact → chunk → embed → ready, with retries and poison queue) Phase 4 (hybrid retrieval + eval harness), Phase 5 (streamed chat with backend-validated citations) and Phase 6 (React document library + chat UI + react-pdf citation viewer with polygon highlights, retry + preview endpoints, Playwright e2e happy path) are complete. The full PLAN §15 vertical slice works end to end locally with AI_PROVIDER=fake. The full build plan, phased implementation guide, domain model, API outline and acceptance criteria live in `docs/PLAN.md`. Read it before implementing anything. Implement one phase per session; do not expand scope beyond the current phase. Architecture decisions are recorded in `docs/decisions/`.
 
 ## Stack
 
@@ -131,6 +131,9 @@ Other quirks:
 - Node apps build with webpack (`NxAppWebpackPlugin`, see `apps/*/webpack.config.js`) — the `@nx/esbuild` executor drops TypeScript project references and fails on composite imports (ADR 0002).
 - Nx injects the root `.env` into every task's environment. Never put `PORT` in `.env` (it would repoint the Vite dev server); the API's port defaults in `libs/config`.
 - Azurite runs with `--skipApiVersionCheck` (pinned image predates the Azure SDK's API version). When bumping `@azure/storage-*`, keep it.
+- Never name an Nx project the same as an npm dependency (the lib at `libs/ai` is project `ai-lib`): the `@nx/js:node` serve executor's require overrides resolve workspace project names before node_modules, shadowing the real package.
+- `pdfjs-dist` is pinned to react-pdf's bundled version (see package.json) so the viewer worker and parser use one version; check react-pdf's dependency before bumping.
+- apps/web compiles with `moduleResolution: bundler` (Vite); Node apps/libs stay on the workspace `nodenext` default.
 - `DATABASE_URL` may arrive in ADO.NET form in Azure; `normalizeDatabaseUrl` in `libs/config` converts it — use it wherever a pg connection is opened from raw env.
 - Windows dev machine: prefer the repo's pnpm scripts; kill orphaned dev servers by matching `serve|vite|node-with-require-overrides` in the node process command lines.
 

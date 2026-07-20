@@ -284,6 +284,7 @@ export class ChatService {
       documentId: chunk.documentId,
       fileName: chunk.fileName,
       page: locator.page,
+      polygons: locator.polygons,
       excerpt: locator.excerpt,
     };
     orderedCitations.push(citation);

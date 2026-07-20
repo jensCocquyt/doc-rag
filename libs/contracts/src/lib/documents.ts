@@ -43,3 +43,9 @@ export const documentListResponseSchema = z.object({
   documents: z.array(documentDtoSchema),
 });
 export type DocumentListResponse = z.infer<typeof documentListResponseSchema>;
+
+export const previewUrlResponseSchema = z.object({
+  url: z.url(),
+  expiresAt: z.iso.datetime(),
+});
+export type PreviewUrlResponse = z.infer<typeof previewUrlResponseSchema>;

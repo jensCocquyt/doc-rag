@@ -18,6 +18,7 @@ export default defineConfig(() => ({
     // port is fixed to the libs/config default (PORT must not live in .env).
     proxy: {
       '/documents': 'http://localhost:3000',
+      '/conversations': 'http://localhost:3000',
       '/health': 'http://localhost:3000',
     },
   },

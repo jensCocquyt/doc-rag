@@ -1,6 +1,7 @@
 import type {
   DocumentDto,
   DocumentListResponse,
+  PreviewUrlResponse,
   UploadSessionResponse,
 } from '@doc-rag/contracts';
 
@@ -87,4 +88,20 @@ export async function deleteDocument(documentId: string): Promise<void> {
     method: 'DELETE',
   });
   if (!response.ok) throw await parseError(response);
+}
+
+export async function retryDocument(documentId: string): Promise<DocumentDto> {
+  const response = await fetch(`/documents/${documentId}/retry`, {
+    method: 'POST',
+  });
+  if (!response.ok) throw await parseError(response);
+  return (await response.json()) as DocumentDto;
+}
+
+export async function getPreviewUrl(
+  documentId: string,
+): Promise<PreviewUrlResponse> {
+  const response = await fetch(`/documents/${documentId}/preview-url`);
+  if (!response.ok) throw await parseError(response);
+  return (await response.json()) as PreviewUrlResponse;
 }
