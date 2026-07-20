@@ -1,3 +1,24 @@
+# Phase 5 — Streamed chat + validated citations (feat/phase-5-streamed-chat)
+
+- [x] libs/ai: AnswerGenerator/QueryRewriter/Summarizer interfaces; Azure impls
+      (AI SDK streamObject/generateText) + grounded deterministic fakes;
+      mapAnswerPartials pure mapper unit-tested.
+- [x] Contracts: conversation/message DTOs, NDJSON chat stream events,
+      modelAnswerSchema (segments + insufficientEvidence).
+- [x] DB: conversation + message repositories; messages.metadata migration
+      (segments, latencies, error codes — never content beyond the answer).
+- [x] API: conversations module — CRUD, PATCH documents (validated selection),
+      NDJSON streamed POST message, retry/regenerate, cancel via generationId,
+      client-disconnect abort, history summarization past
+      CONVERSATION_RECENT_MESSAGES.
+- [x] Validation: unknown citation id → citation_validation_failed; factual
+      segments must cite; citations resolved from DB only.
+- [x] Tests: 7 API integration (typed cited stream, persistence, scoping,
+      insufficient evidence, hostile-model rejection via DI override, cancel
+      endpoint, regenerate) + ai lib units. 15 projects green.
+- Known: rate limiting deferred to Phase 10; Azure generator untested against
+  a live deployment (no credentials); cost estimate uses fixed POC rates.
+
 # Phase 4 — PostgreSQL hybrid retrieval (branch feat/phase-4-hybrid-retrieval, own PR)
 
 - [x] libs/retrieval: RRF fusion (k=60, weighted arms), exact-identifier arm,

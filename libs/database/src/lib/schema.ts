@@ -255,6 +255,9 @@ export const messages = pgTable(
     inputTokens: integer('input_tokens'),
     outputTokens: integer('output_tokens'),
     estimatedCost: numeric('estimated_cost', { precision: 12, scale: 6 }),
+    // Operational detail that doesn't warrant columns: retrieval/model
+    // latencies, error codes, generation linkage. Never document content.
+    metadata: jsonb('metadata').notNull().default({}),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),

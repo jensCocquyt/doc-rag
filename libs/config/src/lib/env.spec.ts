@@ -1,6 +1,7 @@
 import { loadApiEnv, loadWorkerEnv, normalizeDatabaseUrl } from './env';
 
 const validEnv = {
+  AI_PROVIDER: 'fake',
   DATABASE_URL: 'postgresql://user:pass@localhost:5432/docrag',
   AZURE_STORAGE_BLOB_CONNECTION_STRING:
     'DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=key;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;',

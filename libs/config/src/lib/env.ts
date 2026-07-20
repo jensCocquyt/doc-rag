@@ -78,15 +78,62 @@ const storageEnvSchema = baseEnvSchema.extend({
   MAX_FILE_SIZE_BYTES: z.coerce.number().int().positive().default(104857600),
 });
 
-export const apiEnvSchema = storageEnvSchema.extend({
-  PORT: z.coerce.number().int().min(1).max(65535).default(3000),
-  UPLOAD_URL_TTL_SECONDS: z.coerce.number().int().positive().default(900),
-  PREVIEW_URL_TTL_SECONDS: z.coerce.number().int().positive().default(300),
-  RETRIEVAL_VECTOR_TOP_K: z.coerce.number().int().positive().default(20),
-  RETRIEVAL_TEXT_TOP_K: z.coerce.number().int().positive().default(20),
-  RETRIEVAL_FINAL_TOP_K: z.coerce.number().int().positive().default(8),
-  MAX_CONTEXT_TOKENS: z.coerce.number().int().positive().default(9000),
-});
+/**
+ * AI provider block shared by API (query embedding, chat) and worker
+ * (document embeddings). 'fake' is an explicit opt-in for credential-less
+ * local/CI runs — a missing key with AI_PROVIDER=azure is a startup error,
+ * never a downgrade.
+ */
+const aiEnvShape = {
+  AI_PROVIDER: z.enum(['azure', 'fake']).default('azure'),
+  AZURE_OPENAI_RESOURCE_NAME: z.string().optional(),
+  AZURE_OPENAI_API_KEY: z.string().optional(),
+  AZURE_OPENAI_EMBEDDING_DEPLOYMENT: z.string().optional(),
+  AZURE_OPENAI_CHAT_DEPLOYMENT: z.string().optional(),
+  EMBEDDING_BATCH_SIZE: z.coerce.number().int().positive().default(64),
+} as const;
+
+function requireAzureAiSettings(
+  env: {
+    AI_PROVIDER: 'azure' | 'fake';
+  } & Partial<Record<string, unknown>>,
+  ctx: z.RefinementCtx,
+  keys: string[],
+): void {
+  if (env.AI_PROVIDER !== 'azure') return;
+  for (const key of keys) {
+    if (!env[key]) {
+      ctx.addIssue({
+        code: 'custom',
+        path: [key],
+        message: `${key} is required when AI_PROVIDER=azure`,
+      });
+    }
+  }
+}
+
+export const apiEnvSchema = storageEnvSchema
+  .extend({
+    PORT: z.coerce.number().int().min(1).max(65535).default(3000),
+    UPLOAD_URL_TTL_SECONDS: z.coerce.number().int().positive().default(900),
+    PREVIEW_URL_TTL_SECONDS: z.coerce.number().int().positive().default(300),
+    RETRIEVAL_VECTOR_TOP_K: z.coerce.number().int().positive().default(20),
+    RETRIEVAL_TEXT_TOP_K: z.coerce.number().int().positive().default(20),
+    RETRIEVAL_FINAL_TOP_K: z.coerce.number().int().positive().default(8),
+    MAX_CONTEXT_TOKENS: z.coerce.number().int().positive().default(9000),
+    MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(1200),
+    /** Raw messages kept verbatim; older history is folded into a summary. */
+    CONVERSATION_RECENT_MESSAGES: z.coerce.number().int().positive().default(10),
+    ...aiEnvShape,
+  })
+  .superRefine((env, ctx) =>
+    requireAzureAiSettings(env, ctx, [
+      'AZURE_OPENAI_RESOURCE_NAME',
+      'AZURE_OPENAI_API_KEY',
+      'AZURE_OPENAI_EMBEDDING_DEPLOYMENT',
+      'AZURE_OPENAI_CHAT_DEPLOYMENT',
+    ]),
+  );
 
 export const workerEnvSchema = storageEnvSchema
   .extend({
@@ -108,34 +155,15 @@ export const workerEnvSchema = storageEnvSchema
     MAX_PDF_PAGES: z.coerce.number().int().positive().default(500),
     CHUNK_TARGET_TOKENS: z.coerce.number().int().positive().default(650),
     CHUNK_OVERLAP_TOKENS: z.coerce.number().int().positive().default(80),
-    EMBEDDING_BATCH_SIZE: z.coerce.number().int().positive().default(64),
-    /**
-     * 'azure' is the real provider; 'fake' selects deterministic pseudo-
-     * embeddings for local/CI runs without credentials. Always an explicit
-     * choice — a missing key with AI_PROVIDER=azure is a startup error, not
-     * a downgrade.
-     */
-    AI_PROVIDER: z.enum(['azure', 'fake']).default('azure'),
-    AZURE_OPENAI_RESOURCE_NAME: z.string().optional(),
-    AZURE_OPENAI_API_KEY: z.string().optional(),
-    AZURE_OPENAI_EMBEDDING_DEPLOYMENT: z.string().optional(),
+    ...aiEnvShape,
   })
-  .superRefine((env, ctx) => {
-    if (env.AI_PROVIDER !== 'azure') return;
-    for (const key of [
+  .superRefine((env, ctx) =>
+    requireAzureAiSettings(env, ctx, [
       'AZURE_OPENAI_RESOURCE_NAME',
       'AZURE_OPENAI_API_KEY',
       'AZURE_OPENAI_EMBEDDING_DEPLOYMENT',
-    ] as const) {
-      if (!env[key]) {
-        ctx.addIssue({
-          code: 'custom',
-          path: [key],
-          message: `${key} is required when AI_PROVIDER=azure`,
-        });
-      }
-    }
-  });
+    ]),
+  );
 
 export type ApiEnv = z.infer<typeof apiEnvSchema>;
 export type WorkerEnv = z.infer<typeof workerEnvSchema>;

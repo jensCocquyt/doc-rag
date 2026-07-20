@@ -1,13 +1,16 @@
 import { Module } from '@nestjs/common';
-import { apiEnvProvider } from '../env.provider';
+import { apiEnvProvider, API_ENV } from '../env.provider';
 import {
   DatabaseClient,
+  DOCUMENT_REPOSITORY,
+  DOCUMENT_VERSION_REPOSITORY,
+  INGESTION_JOB_REPOSITORY,
   repositoryProviders,
 } from './database.provider';
 import { DocumentsController } from './documents.controller';
 import { DocumentsService } from './documents.service';
 import { IngestionQueueSender } from './ingestion-queue';
-import { objectStorageProvider } from './storage.provider';
+import { objectStorageProvider, OBJECT_STORAGE } from './storage.provider';
 
 @Module({
   controllers: [DocumentsController],
@@ -18,6 +21,14 @@ import { objectStorageProvider } from './storage.provider';
     objectStorageProvider,
     IngestionQueueSender,
     DocumentsService,
+  ],
+  exports: [
+    API_ENV,
+    DatabaseClient,
+    DOCUMENT_REPOSITORY,
+    DOCUMENT_VERSION_REPOSITORY,
+    INGESTION_JOB_REPOSITORY,
+    OBJECT_STORAGE,
   ],
 })
 export class DocumentsModule {}
