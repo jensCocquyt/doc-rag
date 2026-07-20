@@ -92,6 +92,9 @@ jobs:
       - name: Apply database migrations
         run: pnpm db:migrate
 
+      - name: Seed POC tenant and user
+        run: pnpm db:seed
+
       - name: Install Playwright browser
         run: npx playwright install chromium --with-deps
 
