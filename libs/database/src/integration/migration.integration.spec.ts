@@ -10,7 +10,7 @@ describe.skipIf(!rawUrl)('migrations', () => {
   const adminUrl = rawUrl ? normalizeDatabaseUrl(rawUrl) : '';
   const testDbName = `docrag_migration_test_${randomUUID().slice(0, 8)}`;
 
-  async function withAdmin(fn: (client: Client) => Promise<void>) {
+  async function withAdmin(fn: (client: Client) => Promise<unknown>) {
     const client = new Client({ connectionString: adminUrl });
     await client.connect();
     try {
