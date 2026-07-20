@@ -87,6 +87,8 @@
   },
   "dependencies": {
     "@ai-sdk/azure": "^4.0.17",
+    "@azure/msal-browser": "^5.17.1",
+    "@azure/msal-react": "^5.5.3",
     "@azure/storage-blob": "^12.33.0",
     "@azure/storage-queue": "^12.31.0",
     "@nestjs/common": "^11.0.0",
@@ -99,6 +101,7 @@
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
     "fastify": "^5.10.0",
+    "jose": "^6.2.3",
     "pdfjs-dist": "^5.4.296",
     "pg": "^8.22.0",
     "react": "^19.0.0",

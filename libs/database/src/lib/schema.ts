@@ -265,6 +265,28 @@ export const messages = pgTable(
   (t) => [index('messages_conversation_idx').on(t.conversationId)],
 );
 
+/**
+ * Security-relevant actions (PLAN.md Phase 9): who did what to which
+ * resource. Ids and outcomes only — never document content or prompts.
+ * Deliberately FK-less so failed-authorization events are always writable.
+ */
+export const auditEvents = pgTable(
+  'audit_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id'),
+    userId: uuid('user_id'),
+    action: text('action').notNull(),
+    resourceType: text('resource_type'),
+    resourceId: text('resource_id'),
+    outcome: text('outcome').notNull().default('success'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index('audit_events_tenant_time_idx').on(t.tenantId, t.createdAt)],
+);
+
 export const messageCitations = pgTable(
   'message_citations',
   {

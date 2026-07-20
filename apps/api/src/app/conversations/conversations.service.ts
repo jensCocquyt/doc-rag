@@ -9,43 +9,54 @@ import type {
   MessageDto,
   PdfLocator,
 } from '@doc-rag/contracts';
-import {
-  POC_TENANT_ID,
-  POC_USER_ID,
-  type ConversationRecord,
-  type ConversationRepository,
-  type DocumentRepository,
-  type MessageRepository,
+import type {
+  AuditRepository,
+  ConversationRecord,
+  ConversationRepository,
+  DocumentRepository,
+  MessageRepository,
 } from '@doc-rag/database';
+import type { RequestIdentity } from '../auth/auth.guard';
+import { AUDIT_REPOSITORY } from '../core.module';
 import { DOCUMENT_REPOSITORY } from '../documents/database.provider';
 import { CONVERSATION_REPOSITORY, MESSAGE_REPOSITORY } from './ai.provider';
 
 /** Conversation CRUD and scoping; generation itself lives in ChatService. */
 @Injectable()
 export class ConversationsService {
-  // Seeded POC identity until Entra authentication (Phase 9).
-  readonly tenantId = POC_TENANT_ID;
-  readonly userId = POC_USER_ID;
-
   constructor(
     @Inject(CONVERSATION_REPOSITORY)
     private readonly conversations: ConversationRepository,
     @Inject(MESSAGE_REPOSITORY) private readonly messages: MessageRepository,
     @Inject(DOCUMENT_REPOSITORY)
     private readonly documents: DocumentRepository,
+    @Inject(AUDIT_REPOSITORY) private readonly audit: AuditRepository,
   ) {}
 
-  async create(title?: string): Promise<ConversationDto> {
+  async create(
+    identity: RequestIdentity,
+    title?: string,
+  ): Promise<ConversationDto> {
     const conversation = await this.conversations.create({
-      tenantId: this.tenantId,
-      userId: this.userId,
+      tenantId: identity.tenantId,
+      userId: identity.userId,
       title,
+    });
+    await this.audit.record({
+      tenantId: identity.tenantId,
+      userId: identity.userId,
+      action: 'conversation.create',
+      resourceType: 'conversation',
+      resourceId: conversation.id,
     });
     return this.toDto(conversation, []);
   }
 
-  async list(): Promise<ConversationDto[]> {
-    const records = await this.conversations.list(this.tenantId, this.userId);
+  async list(identity: RequestIdentity): Promise<ConversationDto[]> {
+    const records = await this.conversations.list(
+      identity.tenantId,
+      identity.userId,
+    );
     return Promise.all(
       records.map(async (record) =>
         this.toDto(record, await this.conversations.listDocumentIds(record.id)),
@@ -53,8 +64,8 @@ export class ConversationsService {
     );
   }
 
-  async get(id: string): Promise<ConversationDto> {
-    const conversation = await this.findOrThrow(id);
+  async get(identity: RequestIdentity, id: string): Promise<ConversationDto> {
+    const conversation = await this.findOrThrow(identity, id);
     return this.toDto(
       conversation,
       await this.conversations.listDocumentIds(id),
@@ -62,13 +73,17 @@ export class ConversationsService {
   }
 
   async replaceDocuments(
+    identity: RequestIdentity,
     id: string,
     documentIds: string[],
   ): Promise<ConversationDto> {
-    const conversation = await this.findOrThrow(id);
+    const conversation = await this.findOrThrow(identity, id);
     // Selection may only reference this tenant's live documents.
     for (const documentId of documentIds) {
-      const document = await this.documents.findById(this.tenantId, documentId);
+      const document = await this.documents.findById(
+        identity.tenantId,
+        documentId,
+      );
       if (!document) {
         throw new BadRequestException({
           code: 'unknown_document',
@@ -80,8 +95,11 @@ export class ConversationsService {
     return this.toDto(conversation, [...documentIds].sort());
   }
 
-  async listMessages(conversationId: string): Promise<MessageDto[]> {
-    await this.findOrThrow(conversationId);
+  async listMessages(
+    identity: RequestIdentity,
+    conversationId: string,
+  ): Promise<MessageDto[]> {
+    await this.findOrThrow(identity, conversationId);
     const records = await this.messages.listByConversation(conversationId);
     const citationsByMessage = await this.messages.listCitations(
       records.map((record) => record.id),
@@ -124,8 +142,14 @@ export class ConversationsService {
     });
   }
 
-  async findOrThrow(id: string): Promise<ConversationRecord> {
-    const conversation = await this.conversations.findById(this.tenantId, id);
+  async findOrThrow(
+    identity: RequestIdentity,
+    id: string,
+  ): Promise<ConversationRecord> {
+    const conversation = await this.conversations.findById(
+      identity.tenantId,
+      id,
+    );
     if (!conversation) {
       throw new NotFoundException({
         code: 'conversation_not_found',

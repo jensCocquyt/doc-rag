@@ -7,3 +7,5 @@ export * from './lib/repositories/ingestion-job.repository';
 export * from './lib/repositories/chunk.repository';
 export * from './lib/repositories/conversation.repository';
 export * from './lib/repositories/message.repository';
+export * from './lib/repositories/user.repository';
+export * from './lib/repositories/audit.repository';

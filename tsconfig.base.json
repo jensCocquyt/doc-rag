@@ -23,6 +23,7 @@
       "@doc-rag/contracts": ["./libs/contracts/src/index.ts"],
       "@doc-rag/config": ["./libs/config/src/index.ts"],
       "@doc-rag/ai": ["./libs/ai/src/index.ts"],
+      "@doc-rag/auth": ["./libs/auth/src/index.ts"],
       "@doc-rag/chunking": ["./libs/chunking/src/index.ts"],
       "@doc-rag/document-processing": ["./libs/document-processing/src/index.ts"],
       "@doc-rag/embeddings": ["./libs/embeddings/src/index.ts"],
