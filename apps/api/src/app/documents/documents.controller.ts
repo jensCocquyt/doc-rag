@@ -15,6 +15,7 @@ import {
   type PreviewUrlResponse,
   type UploadSessionResponse,
 } from '@doc-rag/contracts';
+import { Identity, type RequestIdentity } from '../auth/auth.guard';
 import { DocumentsService } from './documents.service';
 import { parseBody } from './zod-body.pipe';
 
@@ -24,46 +25,60 @@ export class DocumentsController {
 
   @Post('upload-sessions')
   async createUploadSession(
+    @Identity() identity: RequestIdentity,
     @Body() body: unknown,
   ): Promise<UploadSessionResponse> {
     const request = parseBody(uploadSessionRequestSchema, body);
-    return this.documentsService.createUploadSession(request);
+    return this.documentsService.createUploadSession(identity, request);
   }
 
   @Post(':id/complete-upload')
   @HttpCode(200)
   async completeUpload(
+    @Identity() identity: RequestIdentity,
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<DocumentDto> {
-    return this.documentsService.completeUpload(id);
+    return this.documentsService.completeUpload(identity, id);
   }
 
   @Get()
-  async list(): Promise<DocumentListResponse> {
-    return { documents: await this.documentsService.list() };
+  async list(
+    @Identity() identity: RequestIdentity,
+  ): Promise<DocumentListResponse> {
+    return { documents: await this.documentsService.list(identity) };
   }
 
   @Get(':id/preview-url')
   async previewUrl(
+    @Identity() identity: RequestIdentity,
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<PreviewUrlResponse> {
-    return this.documentsService.createPreviewUrl(id);
+    return this.documentsService.createPreviewUrl(identity, id);
   }
 
   @Post(':id/retry')
   @HttpCode(200)
-  async retry(@Param('id', ParseUUIDPipe) id: string): Promise<DocumentDto> {
-    return this.documentsService.retry(id);
+  async retry(
+    @Identity() identity: RequestIdentity,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<DocumentDto> {
+    return this.documentsService.retry(identity, id);
   }
 
   @Get(':id')
-  async get(@Param('id', ParseUUIDPipe) id: string): Promise<DocumentDto> {
-    return this.documentsService.get(id);
+  async get(
+    @Identity() identity: RequestIdentity,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<DocumentDto> {
+    return this.documentsService.get(identity, id);
   }
 
   @Delete(':id')
   @HttpCode(204)
-  async remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
-    await this.documentsService.softDelete(id);
+  async remove(
+    @Identity() identity: RequestIdentity,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<void> {
+    await this.documentsService.softDelete(identity, id);
   }
 }

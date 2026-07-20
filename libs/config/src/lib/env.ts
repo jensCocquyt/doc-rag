@@ -115,6 +115,14 @@ function requireAzureAiSettings(
 export const apiEnvSchema = storageEnvSchema
   .extend({
     PORT: z.coerce.number().int().min(1).max(65535).default(3000),
+    /**
+     * 'poc' uses the seeded identity (pre-Entra phases); 'entra' enforces
+     * Bearer tokens. Explicit switch — misconfigured Entra settings fail at
+     * startup, never silently fall back to open access.
+     */
+    AUTH_MODE: z.enum(['poc', 'entra']).default('poc'),
+    ENTRA_TENANT_ID: z.string().optional(),
+    ENTRA_API_AUDIENCE: z.string().optional(),
     UPLOAD_URL_TTL_SECONDS: z.coerce.number().int().positive().default(900),
     PREVIEW_URL_TTL_SECONDS: z.coerce.number().int().positive().default(300),
     RETRIEVAL_VECTOR_TOP_K: z.coerce.number().int().positive().default(20),
@@ -126,14 +134,25 @@ export const apiEnvSchema = storageEnvSchema
     CONVERSATION_RECENT_MESSAGES: z.coerce.number().int().positive().default(10),
     ...aiEnvShape,
   })
-  .superRefine((env, ctx) =>
+  .superRefine((env, ctx) => {
     requireAzureAiSettings(env, ctx, [
       'AZURE_OPENAI_RESOURCE_NAME',
       'AZURE_OPENAI_API_KEY',
       'AZURE_OPENAI_EMBEDDING_DEPLOYMENT',
       'AZURE_OPENAI_CHAT_DEPLOYMENT',
-    ]),
-  );
+    ]);
+    if (env.AUTH_MODE === 'entra') {
+      for (const key of ['ENTRA_TENANT_ID', 'ENTRA_API_AUDIENCE'] as const) {
+        if (!env[key]) {
+          ctx.addIssue({
+            code: 'custom',
+            path: [key],
+            message: `${key} is required when AUTH_MODE=entra`,
+          });
+        }
+      }
+    }
+  });
 
 export const workerEnvSchema = storageEnvSchema
   .extend({

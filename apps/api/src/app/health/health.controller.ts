@@ -1,8 +1,11 @@
 import { Controller, Get, Res } from '@nestjs/common';
 import type { FastifyReply } from 'fastify';
 import type { HealthReport } from '@doc-rag/contracts';
+import { Public } from '../auth/auth.guard';
 import { HealthService } from './health.service';
 
+// Health stays unauthenticated: container probes have no tokens.
+@Public()
 @Controller('health')
 export class HealthController {
   constructor(private readonly healthService: HealthService) {}

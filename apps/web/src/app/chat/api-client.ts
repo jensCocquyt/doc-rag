@@ -4,6 +4,7 @@ import {
   type ConversationDto,
   type MessageDto,
 } from '@doc-rag/contracts';
+import { apiFetch } from '../auth/auth';
 
 async function parseError(response: Response): Promise<Error> {
   try {
@@ -15,7 +16,7 @@ async function parseError(response: Response): Promise<Error> {
 }
 
 export async function createConversation(): Promise<ConversationDto> {
-  const response = await fetch('/conversations', {
+  const response = await apiFetch('/conversations', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({}),
@@ -25,7 +26,7 @@ export async function createConversation(): Promise<ConversationDto> {
 }
 
 export async function listConversations(): Promise<ConversationDto[]> {
-  const response = await fetch('/conversations');
+  const response = await apiFetch('/conversations');
   if (!response.ok) throw await parseError(response);
   const body = (await response.json()) as { conversations: ConversationDto[] };
   return body.conversations;
@@ -35,7 +36,7 @@ export async function updateConversationDocuments(
   conversationId: string,
   documentIds: string[],
 ): Promise<ConversationDto> {
-  const response = await fetch(`/conversations/${conversationId}/documents`, {
+  const response = await apiFetch(`/conversations/${conversationId}/documents`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ documentIds }),
@@ -47,7 +48,7 @@ export async function updateConversationDocuments(
 export async function listMessages(
   conversationId: string,
 ): Promise<MessageDto[]> {
-  const response = await fetch(`/conversations/${conversationId}/messages`);
+  const response = await apiFetch(`/conversations/${conversationId}/messages`);
   if (!response.ok) throw await parseError(response);
   const body = (await response.json()) as { messages: MessageDto[] };
   return body.messages;
@@ -57,7 +58,7 @@ export async function cancelGeneration(
   conversationId: string,
   generationId: string,
 ): Promise<void> {
-  await fetch(
+  await apiFetch(
     `/conversations/${conversationId}/generations/${generationId}/cancel`,
     { method: 'POST' },
   );
@@ -72,7 +73,7 @@ export async function streamChatResponse(
   init: RequestInit,
   onEvent: (event: ChatStreamEvent) => void,
 ): Promise<void> {
-  const response = await fetch(url, init);
+  const response = await apiFetch(url, init);
   if (!response.ok || !response.body) throw await parseError(response);
   const reader = response.body.getReader();
   const decoder = new TextDecoder();

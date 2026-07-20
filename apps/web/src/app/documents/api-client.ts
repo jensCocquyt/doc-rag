@@ -1,3 +1,4 @@
+import { apiFetch } from '../auth/auth';
 import type {
   DocumentDto,
   DocumentListResponse,
@@ -23,7 +24,7 @@ async function parseError(response: Response): Promise<Error> {
 export async function createUploadSession(
   file: File,
 ): Promise<UploadSessionResponse> {
-  const response = await fetch('/documents/upload-sessions', {
+  const response = await apiFetch('/documents/upload-sessions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -69,7 +70,7 @@ export function uploadToStorage(
 }
 
 export async function completeUpload(documentId: string): Promise<DocumentDto> {
-  const response = await fetch(`/documents/${documentId}/complete-upload`, {
+  const response = await apiFetch(`/documents/${documentId}/complete-upload`, {
     method: 'POST',
   });
   if (!response.ok) throw await parseError(response);
@@ -77,21 +78,21 @@ export async function completeUpload(documentId: string): Promise<DocumentDto> {
 }
 
 export async function listDocuments(): Promise<DocumentDto[]> {
-  const response = await fetch('/documents');
+  const response = await apiFetch('/documents');
   if (!response.ok) throw await parseError(response);
   const body = (await response.json()) as DocumentListResponse;
   return body.documents;
 }
 
 export async function deleteDocument(documentId: string): Promise<void> {
-  const response = await fetch(`/documents/${documentId}`, {
+  const response = await apiFetch(`/documents/${documentId}`, {
     method: 'DELETE',
   });
   if (!response.ok) throw await parseError(response);
 }
 
 export async function retryDocument(documentId: string): Promise<DocumentDto> {
-  const response = await fetch(`/documents/${documentId}/retry`, {
+  const response = await apiFetch(`/documents/${documentId}/retry`, {
     method: 'POST',
   });
   if (!response.ok) throw await parseError(response);
@@ -101,7 +102,7 @@ export async function retryDocument(documentId: string): Promise<DocumentDto> {
 export async function getPreviewUrl(
   documentId: string,
 ): Promise<PreviewUrlResponse> {
-  const response = await fetch(`/documents/${documentId}/preview-url`);
+  const response = await apiFetch(`/documents/${documentId}/preview-url`);
   if (!response.ok) throw await parseError(response);
   return (await response.json()) as PreviewUrlResponse;
 }

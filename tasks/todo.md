@@ -1,3 +1,29 @@
+# Phase 9 — Entra auth, CODE ONLY (feat/phase-9-entra-auth)
+
+- [x] libs/auth: EntraTokenVerifier (jose, tenant JWKS, issuer/audience/
+      lifetime) with injectable key resolver; 7 unit tests via local JWKS
+      (wrong audience/issuer/expiry/unknown key/missing tid/garbage).
+- [x] API: global AuthGuard behind explicit AUTH_MODE=poc|entra (poc default,
+      never a silent fallback — entra without settings fails startup);
+      @Identity() per-request identity threaded through ALL documents +
+      conversations services/controllers (POC constants removed from
+      services); /health stays @Public for probes; first-login user
+      provisioning via users.external_identity_id.
+- [x] CoreModule (@Global): single pg pool + env + repositories for the app.
+- [x] audit_events table (migration 0003) + repository: upload/delete/
+      conversation-create/chat-request/auth-failure, ids + outcomes only.
+- [x] Web: MSAL (@azure/msal-browser) behind VITE_AUTH_MODE=entra; apiFetch
+      attaches Bearer tokens; poc default unchanged. docs/entra-setup.md has
+      the registration steps.
+- [x] Tests: 5 auth integration tests (401 unauthenticated + audit row,
+      forged token 401, public health, valid token provisioning without
+      duplicates, cross-tenant IDOR 404 for document + preview). 20 API
+      integration tests green.
+- Fixed: circular import auth.module↔auth.guard left the DI symbol undefined
+  → extracted tokens.ts.
+- NOT done by design: no real Entra app registrations (Jens's decision);
+  per-user document ACLs out of POC scope (tenant-wide access model).
+
 # Phase 8 — Azure IaC + deploy pipeline, CODE ONLY (feat/phase-8-azure-deploy)
 
 - [x] infra/azure: main.bicep + modules (storage w/ CORS+lifecycle+queues, ACR
