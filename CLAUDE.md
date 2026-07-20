@@ -107,6 +107,25 @@ After changes:
 4. Report cost and security impact.
 5. List unresolved issues honestly.
 
+## Workspace gotchas (learned in Phases 0-1; save yourself the debugging)
+
+Adding a new library (`pnpm nx g @nx/js:library libs/<name> --bundler=none --linter=eslint --unitTestRunner=vitest --useProjectJson=true`) requires four manual fixes afterwards, because the generators predate this workspace's conventions:
+
+1. `tsconfig.base.json`: rename the generated bare path alias to `@doc-rag/<name>`.
+2. `libs/<name>/tsconfig.json`: delete the `"module": "commonjs"` override (conflicts with the base `moduleResolution: nodenext` under TS 6).
+3. `libs/<name>/tsconfig.lib.json` and `tsconfig.spec.json`: set `outDir` to `./out-tsc/lib` and `./out-tsc/spec` — the generated shared `../../dist/out-tsc` makes libs overwrite each other's declaration files, producing phantom "has no exported member" errors.
+4. `libs/<name>/tsconfig.spec.json`: add `"references": [{ "path": "./tsconfig.lib.json" }]` or specs importing lib sources fail typecheck with TS6307.
+
+Also: run `pnpm nx sync` after adding cross-project imports; integration specs are named `*.integration.spec.ts` with their own `vitest.integration.config.mts` + `test-integration` run-commands target (copy an existing lib's pattern), and must be excluded in the unit `vitest.config.mts`.
+
+Other quirks:
+
+- Node apps build with webpack (`NxAppWebpackPlugin`, see `apps/*/webpack.config.js`) — the `@nx/esbuild` executor drops TypeScript project references and fails on composite imports (ADR 0002).
+- Nx injects the root `.env` into every task's environment. Never put `PORT` in `.env` (it would repoint the Vite dev server); the API's port defaults in `libs/config`.
+- Azurite runs with `--skipApiVersionCheck` (pinned image predates the Azure SDK's API version). When bumping `@azure/storage-*`, keep it.
+- `DATABASE_URL` may arrive in ADO.NET form in Azure; `normalizeDatabaseUrl` in `libs/config` converts it — use it wherever a pg connection is opened from raw env.
+- Windows dev machine: prefer the repo's pnpm scripts; kill orphaned dev servers by matching `serve|vite|node-with-require-overrides` in the node process command lines.
+
 ## Code preferences
 
 - Strict TypeScript.
