@@ -19,7 +19,8 @@
     "check": "nx run-many -t build lint test",
     "db:generate": "drizzle-kit generate --config libs/database/drizzle.config.ts",
     "db:migrate": "drizzle-kit migrate --config libs/database/drizzle.config.ts",
-    "db:seed": "tsx libs/database/src/seed/seed.ts"
+    "db:seed": "tsx libs/database/src/seed/seed.ts",
+    "eval": "tsx tools/eval/run-eval.ts"
   },
   "private": true,
   "packageManager": "pnpm@10.30.3",

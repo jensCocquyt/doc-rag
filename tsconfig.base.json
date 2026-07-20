@@ -27,6 +27,7 @@
       "@doc-rag/embeddings": ["./libs/embeddings/src/index.ts"],
       "@doc-rag/pdf-processing": ["./libs/pdf-processing/src/index.ts"],
       "@doc-rag/queue": ["./libs/queue/src/index.ts"],
+      "@doc-rag/retrieval": ["./libs/retrieval/src/index.ts"],
       "@doc-rag/storage": ["./libs/storage/src/index.ts"],
       "@doc-rag/testing": ["./libs/testing/src/index.ts"],
       "@doc-rag/database": ["./libs/database/src/index.ts"]

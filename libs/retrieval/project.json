@@ -1,0 +1,16 @@
+{
+  "name": "retrieval",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/retrieval/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "test-integration": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "vitest run --config libs/retrieval/vitest.integration.config.mts",
+        "cwd": "{workspaceRoot}"
+      }
+    }
+  }
+}

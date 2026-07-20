@@ -1,3 +1,18 @@
+# Phase 4 — PostgreSQL hybrid retrieval (branch feat/phase-4-hybrid-retrieval, own PR)
+
+- [x] libs/retrieval: RRF fusion (k=60, weighted arms), exact-identifier arm,
+      mandatory filters in every arm's SQL, neighbour dedup + token budget.
+- [x] Config: RETRIEVAL_*_TOP_K, MAX_CONTEXT_TOKENS.
+- [x] Eval harness tools/eval (`pnpm eval`): 7 questions, isolated tenant,
+      reports hit rate and citation-page correctness separately. 7/7 + 7/7
+      with fake embeddings (lexical + verbatim arms honest; semantic recall
+      needs AI_PROVIDER=azure).
+- [x] Tests: fusion/assembly unit; 9 integration tests incl. tenant isolation,
+      selection narrowing, active-version + soft-delete exclusion, EXPLAIN
+      index proof (enable_seqscan=off for tiny tables).
+- Known: userId reserved (per-user authz is Phase 9); citation ids assigned
+  at retrieval time (Phase 5 persists mapping).
+
 # Phase 3 — PDF ingestion (same branch/PR as Phase 2, per Jens)
 
 ## Plan

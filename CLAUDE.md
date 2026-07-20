@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Production-oriented RAG POC with a hard Azure budget of €130 per month.
 
-**Current state:** Phase 0 (Nx workspace, apps, libs, health checks, CI), Phase 0A (Docker Compose replaced Aspire), Phase 1 (Drizzle schema, migrations, repositories, seed), Phase 2 (Blob storage abstraction, direct browser→Azurite upload, document endpoints) and Phase 3 (PDF ingestion pipeline: parse → normalize → artifact → chunk → embed → ready, with retries and poison queue) are complete. The full build plan, phased implementation guide, domain model, API outline and acceptance criteria live in `docs/PLAN.md`. Read it before implementing anything. Implement one phase per session; do not expand scope beyond the current phase. Architecture decisions are recorded in `docs/decisions/`.
+**Current state:** Phase 0 (Nx workspace, apps, libs, health checks, CI), Phase 0A (Docker Compose replaced Aspire), Phase 1 (Drizzle schema, migrations, repositories, seed), Phase 2 (Blob storage abstraction, direct browser→Azurite upload, document endpoints) Phase 3 (PDF ingestion pipeline: parse → normalize → artifact → chunk → embed → ready, with retries and poison queue) and Phase 4 (hybrid retrieval + eval harness) are complete. The full build plan, phased implementation guide, domain model, API outline and acceptance criteria live in `docs/PLAN.md`. Read it before implementing anything. Implement one phase per session; do not expand scope beyond the current phase. Architecture decisions are recorded in `docs/decisions/`.
 
 ## Stack
 
@@ -86,7 +86,8 @@ Nx monorepo layout (target structure, per `docs/PLAN.md`):
 - `libs/chunking` — deterministic chunker (never crosses pages, heading context, overlap only when splitting long runs, sha256 hashes). Token counts are a chars/4 approximation.
 - `libs/embeddings` — `EmbeddingService`: Azure OpenAI via AI SDK `embedMany` (batched) or `DeterministicEmbeddingService` behind explicit `AI_PROVIDER=fake` (local/CI without credentials; never a silent fallback).
 - `libs/queue` — `QueueConsumer`: visibility renewal at half-timeout, dequeue-count retries with exponential backoff, poison-queue move + `onPoison` callback. At-least-once; handlers must be idempotent.
-- `libs/domain`, `libs/retrieval`, `libs/ai` — added in later phases.
+- `libs/retrieval` — hybrid retrieval (PLAN §8): vector + full-text + exact-identifier arms with RRF fusion, mandatory filters (tenant/scope/active-version/ready/not-deleted) in every arm's SQL, neighbour dedup and token-budgeted context assembly. Eval harness: `pnpm eval` (tools/eval; needs running infra).
+- `libs/domain`, `libs/ai` — added in later phases.
 - `infra/azure` — explicit Bicep (Phase 8).
 
 Do not add an abstraction unless it protects a known external boundary or has more than one expected implementation.
