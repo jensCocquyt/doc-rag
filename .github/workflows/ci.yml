@@ -31,6 +31,9 @@ jobs:
 
       - run: pnpm nx affected -t lint test build typecheck
 
+      - name: Validate Bicep templates
+        run: az bicep build --file infra/azure/main.bicep --stdout > /dev/null
+
   integration:
     runs-on: ubuntu-latest
     env:

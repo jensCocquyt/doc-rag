@@ -1,3 +1,25 @@
+# Phase 8 — Azure IaC + deploy pipeline, CODE ONLY (feat/phase-8-azure-deploy)
+
+- [x] infra/azure: main.bicep + modules (storage w/ CORS+lifecycle+queues, ACR
+      Basic, Log Analytics 30d/0.5GB-cap + App Insights 25% sampling, Postgres
+      B1ms/32GB/no-HA/VECTOR, optional Azure OpenAI gpt-4o-mini +
+      text-embedding-3-small, Container Apps env + 3 apps min=0 with KEDA
+      azure-queue rule for worker, user-assigned identity + AcrPull, RG-scope
+      budget 62/77/92% of €130). Compiles clean with az bicep build; CI step
+      validates on every PR.
+- [x] Dockerfiles: api/worker (node:22-alpine multi-stage, pruned manifest +
+      pnpm install, non-root, +tslib workaround for Nx manifest omission),
+      web (nginx-unprivileged, env-templated proxy for /documents|
+      /conversations|/health → API, no CORS surface). All three built AND
+      smoke-tested against local infra (health all-up; worker consuming;
+      web serves shell).
+- [x] deploy.yml: workflow_dispatch only, OIDC login, quality gates, bicep
+      validate + what-if + deploy, az acr build ×3, migrations + seed, health
+      smoke loop. infra/azure/README.md has the one-time OIDC setup.
+- NOT done by design (Jens's decision): no Azure resources created, nothing
+  deployed, no OIDC app registration. Azure acceptance criteria (reachable
+  stack, scale-from-zero test) are pending the user's first dispatch run.
+
 # Phase 6 — React UI + PDF viewer + e2e (feat/phase-6-react-ui)
 
 - [x] API additions: GET /documents/:id/preview-url, POST /documents/:id/retry
