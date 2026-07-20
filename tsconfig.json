@@ -1,0 +1,29 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compileOnSave": false,
+  "files": [],
+  "references": [
+    {
+      "path": "./apps/ingestion-worker"
+    },
+    {
+      "path": "./libs/contracts"
+    },
+    {
+      "path": "./libs/testing"
+    },
+    {
+      "path": "./libs/config"
+    },
+    {
+      "path": "./apps/api"
+    },
+    {
+      "path": "./apps/web"
+    },
+    {
+      "path": "./libs/database"
+    }
+  ],
+  "compilerOptions": {}
+}
