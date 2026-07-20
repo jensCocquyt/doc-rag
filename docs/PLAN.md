@@ -72,7 +72,7 @@ Build a POC where a user can:
 
 1. Upload multiple PDF files in the initial implementation.
 2. Process small and large PDF files asynchronously.
-3. Select one or more files for a conversation.
+3. Ask questions across the tenant's entire document corpus by default, optionally narrowing a conversation to one or more selected files.
 4. Ask questions about those files.
 5. Receive streamed answers.
 6. See inline citations for factual claims.
@@ -564,7 +564,7 @@ Use one retrieval service that:
 6. Filters by:
    - Tenant
    - User authorization
-   - Selected document IDs
+   - Document scope: all tenant documents by default; only the selected document IDs when the conversation has an explicit selection
    - Active document version
    - Non-deleted status
 7. Retrieves approximately 20 candidates.
@@ -1082,7 +1082,7 @@ Retrieve relevant, authorized chunks without Azure AI Search.
 - Add mandatory filters:
   - Tenant ID
   - User access
-  - Selected document IDs
+  - Document scope: whole tenant corpus by default; selected document IDs when the conversation has an explicit selection
   - Active document version
   - Not deleted
 - Add exact-match handling for identifiers.
@@ -1099,7 +1099,8 @@ Retrieve relevant, authorized chunks without Azure AI Search.
 
 - Semantic questions retrieve the expected page.
 - Exact identifiers are found through full-text search.
-- Retrieval cannot return chunks from an unselected document.
+- When a conversation has an explicit document selection, retrieval cannot return chunks from outside that selection.
+- Without a selection, retrieval covers the whole tenant corpus and never crosses tenant boundaries.
 - Retrieval cannot cross tenant boundaries.
 - Evaluation output separates:
   - Retrieval hit rate
@@ -1134,7 +1135,7 @@ Generate streamed answers whose citations are validated by the backend.
 - Configure the official AI SDK Azure provider.
 - Add provider-independent AI configuration.
 - Add conversation endpoints.
-- Add selected-document endpoints.
+- Add selected-document endpoints (optional narrowing; an empty selection means the whole tenant corpus).
 - Add message endpoint with streamed response.
 - Add typed citation data in the stream.
 - Persist user and assistant messages.
@@ -1200,7 +1201,7 @@ Complete the first end-to-end browser experience.
 - Processing errors.
 - Retry button.
 - Delete button.
-- File selection for conversations.
+- Optional file selection for conversations (default is the whole tenant corpus).
 
 #### Chat
 
@@ -1830,7 +1831,7 @@ This repository contains a production-oriented RAG POC with a hard Azure budget 
 - Citation metadata comes from the database, never from the model.
 - Reject unknown model citation IDs.
 - Every factual answer segment needs evidence.
-- Retrieval must filter by tenant, authorization, selected documents and active versions.
+- Retrieval must filter by tenant, authorization, document scope (whole tenant corpus by default, the explicit selection when one exists) and active versions.
 - PostgreSQL is the source of truth.
 - Store normalized extraction output separately from embeddings.
 - Ingestion must be retryable and idempotent.

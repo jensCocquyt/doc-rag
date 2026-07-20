@@ -49,7 +49,7 @@ Production-oriented RAG POC with a hard Azure budget of €130 per month.
 - Citation metadata comes from the database, never from the model.
 - Reject unknown model citation IDs.
 - Every factual answer segment needs evidence.
-- Retrieval must filter by tenant, authorization, selected documents and active versions.
+- Retrieval must filter by tenant, authorization, document scope and active versions. Document scope defaults to the whole tenant corpus; a conversation's explicit selection (conversation_documents rows) narrows it.
 - PostgreSQL is the source of truth.
 - Store normalized extraction output separately from embeddings.
 - Ingestion must be retryable and idempotent (dequeue-count retries, visibility renewal, poison queue).
@@ -88,7 +88,7 @@ Do not add an abstraction unless it protects a known external boundary or has mo
 Key flows to understand before touching related code:
 
 - **Upload:** API issues a scoped short-lived upload URL → browser uploads directly to Blob Storage → API verifies the object → creates ingestion job → sends queue message. Complete-upload is idempotent; queue message only after storage verification.
-- **Answering:** rewrite follow-up → one query embedding → vector + full-text search → RRF fusion → mandatory filters (tenant, authorization, selected documents, active version, not deleted) → ~6-10 chunks in token budget → model answers with opaque citation IDs → backend validates every citation against the retrieved set and resolves all citation metadata from the database.
+- **Answering:** rewrite follow-up → one query embedding → vector + full-text search → RRF fusion → mandatory filters (tenant, authorization, document scope, active version, not deleted) → ~6-10 chunks in token budget → model answers with opaque citation IDs → backend validates every citation against the retrieved set and resolves all citation metadata from the database. Document scope: whole tenant corpus by default; a conversation's explicit selection narrows it.
 
 ## Working process
 

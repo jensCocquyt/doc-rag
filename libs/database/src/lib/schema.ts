@@ -149,7 +149,8 @@ export const chunks = pgTable(
     tenantId: uuid('tenant_id')
       .notNull()
       .references(() => tenants.id),
-    // Logical file; restricts retrieval to a conversation's selected documents.
+    // Logical file; used when a conversation narrows retrieval to an explicit
+    // document selection (default scope is the whole tenant corpus).
     documentId: uuid('document_id')
       .notNull()
       .references(() => documents.id),
@@ -221,6 +222,11 @@ export const conversations = pgTable(
   (t) => [index('conversations_tenant_user_idx').on(t.tenantId, t.userId)],
 );
 
+/**
+ * Optional narrowing of a conversation's retrieval scope. No rows means the
+ * conversation searches the tenant's entire corpus; rows restrict retrieval
+ * to exactly these documents.
+ */
 export const conversationDocuments = pgTable(
   'conversation_documents',
   {
