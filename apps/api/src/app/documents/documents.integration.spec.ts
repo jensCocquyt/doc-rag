@@ -35,12 +35,18 @@ describe.skipIf(!configured)('Documents API (integration)', () => {
   let pool: ReturnType<typeof createPool>;
   let db: ReturnType<typeof createDatabase>;
 
+  // Dedicated queue per run: keeps the test from draining the shared dev
+  // queue (stranding real documents at 'queued') and from feeding a locally
+  // running worker.
+  const testQueueName = `it-api-ingestion-${Date.now()}`;
+
   const ingestionQueue = () =>
     QueueServiceClient.fromConnectionString(
       process.env.AZURE_STORAGE_QUEUE_CONNECTION_STRING!,
-    ).getQueueClient(process.env.AZURE_STORAGE_QUEUE_INGESTION ?? 'rag-ingestion');
+    ).getQueueClient(testQueueName);
 
   beforeAll(async () => {
+    process.env.AZURE_STORAGE_QUEUE_INGESTION = testQueueName;
     pool = createPool(process.env.DATABASE_URL!);
     db = createDatabase(pool);
     // The endpoints attribute everything to the fixed POC identity; make sure
@@ -70,9 +76,13 @@ describe.skipIf(!configured)('Documents API (integration)', () => {
   });
 
   afterAll(async () => {
+    await ingestionQueue().deleteIfExists();
+    delete process.env.AZURE_STORAGE_QUEUE_INGESTION;
     await app?.close();
     await pool?.end();
   });
+
+  const createdDocumentIds: string[] = [];
 
   async function createSession(
     overrides: Partial<{
@@ -81,7 +91,7 @@ describe.skipIf(!configured)('Documents API (integration)', () => {
       sizeBytes: number;
     }> = {},
   ) {
-    return app.inject({
+    const response = await app.inject({
       method: 'POST',
       url: '/documents/upload-sessions',
       payload: {
@@ -91,7 +101,22 @@ describe.skipIf(!configured)('Documents API (integration)', () => {
         ...overrides,
       },
     });
+    if (response.statusCode === 201) {
+      createdDocumentIds.push(
+        (response.json() as UploadSessionResponse).documentId,
+      );
+    }
+    return response;
   }
+
+  afterAll(async () => {
+    // Soft-delete this run's documents so the shared dev library stays clean.
+    for (const id of createdDocumentIds) {
+      await app
+        .inject({ method: 'DELETE', url: `/documents/${id}` })
+        .catch(() => undefined);
+    }
+  });
 
   async function putToStorage(
     session: UploadSessionResponse,

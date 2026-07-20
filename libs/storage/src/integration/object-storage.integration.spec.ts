@@ -66,6 +66,21 @@ describe.skipIf(!connectionString)('AzureBlobObjectStorage (Azurite)', () => {
     expect(await storage.verifyObject(key)).toEqual({ exists: false });
   });
 
+  it('writes and reads back a server-side artifact object', async () => {
+    const key = 'artifacts/normalized.json';
+    const payload = JSON.stringify({ elements: [] });
+    await storage.writeObject(key, payload, 'application/json');
+    const verified = await storage.verifyObject(key);
+    expect(verified).toEqual({
+      exists: true,
+      sizeBytes: payload.length,
+      contentType: 'application/json',
+    });
+    const read = await streamToBuffer(await storage.readObjectStream(key));
+    expect(read.toString('utf8')).toBe(payload);
+    await storage.deleteObject(key);
+  });
+
   it('rejects writing a different blob name with the same SAS', async () => {
     const target = await storage.createUploadTarget(
       'allowed/blob.pdf',

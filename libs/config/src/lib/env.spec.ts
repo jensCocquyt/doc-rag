@@ -94,10 +94,44 @@ describe('normalizeDatabaseUrl', () => {
 });
 
 describe('loadWorkerEnv', () => {
+  const validWorkerEnv = { ...validEnv, AI_PROVIDER: 'fake' };
+
   it('parses a valid environment without PORT', () => {
-    const env = loadWorkerEnv(validEnv);
+    const env = loadWorkerEnv(validWorkerEnv);
     expect(env.DATABASE_URL).toBe(validEnv.DATABASE_URL);
     expect('PORT' in env).toBe(false);
+  });
+
+  it('applies ingestion defaults', () => {
+    const env = loadWorkerEnv(validWorkerEnv);
+    expect(env.AZURE_STORAGE_BLOB_CONTAINER_ARTIFACTS).toBe('artifacts');
+    expect(env.AZURE_STORAGE_QUEUE_POISON).toBe('rag-ingestion-poison');
+    expect(env.QUEUE_VISIBILITY_TIMEOUT_SECONDS).toBe(300);
+    expect(env.QUEUE_MAX_DEQUEUE_COUNT).toBe(5);
+    expect(env.MAX_PDF_PAGES).toBe(500);
+    expect(env.CHUNK_TARGET_TOKENS).toBe(650);
+    expect(env.CHUNK_OVERLAP_TOKENS).toBe(80);
+    expect(env.EMBEDDING_BATCH_SIZE).toBe(64);
+  });
+
+  it('requires Azure OpenAI settings when AI_PROVIDER=azure', () => {
+    expect(() =>
+      loadWorkerEnv({ ...validEnv, AI_PROVIDER: 'azure' }),
+    ).toThrowError(/AZURE_OPENAI_RESOURCE_NAME/);
+    const env = loadWorkerEnv({
+      ...validEnv,
+      AI_PROVIDER: 'azure',
+      AZURE_OPENAI_RESOURCE_NAME: 'resource',
+      AZURE_OPENAI_API_KEY: 'key',
+      AZURE_OPENAI_EMBEDDING_DEPLOYMENT: 'text-embedding-3-small',
+    });
+    expect(env.AI_PROVIDER).toBe('azure');
+  });
+
+  it('rejects an unknown AI_PROVIDER', () => {
+    expect(() =>
+      loadWorkerEnv({ ...validEnv, AI_PROVIDER: 'openai' }),
+    ).toThrowError(/Invalid environment configuration/);
   });
 
   it('rejects a missing queue connection string', () => {

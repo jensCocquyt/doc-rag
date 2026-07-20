@@ -17,9 +17,20 @@ export interface CreateDocumentVersionInput {
  */
 export interface DocumentVersionRepository {
   create(input: CreateDocumentVersionInput): Promise<DocumentVersionRecord>;
+  findById(id: string): Promise<DocumentVersionRecord | null>;
   findLatestByDocument(
     documentId: string,
   ): Promise<DocumentVersionRecord | null>;
+  /** Records what the parser produced for this version. */
+  updateParseResult(
+    id: string,
+    result: {
+      parserVersion: string;
+      normalizedArtifactKey: string;
+      pageCount: number;
+      contentHash: string;
+    },
+  ): Promise<void>;
 }
 
 export class DrizzleDocumentVersionRepository
@@ -37,6 +48,15 @@ export class DrizzleDocumentVersionRepository
     return row;
   }
 
+  async findById(id: string): Promise<DocumentVersionRecord | null> {
+    const [row] = await this.db
+      .select()
+      .from(documentVersions)
+      .where(eq(documentVersions.id, id))
+      .limit(1);
+    return row ?? null;
+  }
+
   async findLatestByDocument(
     documentId: string,
   ): Promise<DocumentVersionRecord | null> {
@@ -47,5 +67,20 @@ export class DrizzleDocumentVersionRepository
       .orderBy(desc(documentVersions.versionNumber))
       .limit(1);
     return row ?? null;
+  }
+
+  async updateParseResult(
+    id: string,
+    result: {
+      parserVersion: string;
+      normalizedArtifactKey: string;
+      pageCount: number;
+      contentHash: string;
+    },
+  ): Promise<void> {
+    await this.db
+      .update(documentVersions)
+      .set(result)
+      .where(eq(documentVersions.id, id));
   }
 }

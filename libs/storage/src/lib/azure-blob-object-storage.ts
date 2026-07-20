@@ -155,6 +155,21 @@ export class AzureBlobObjectStorage implements ObjectStorage {
     return response.readableStreamBody;
   }
 
+  async writeObject(
+    key: string,
+    content: Buffer | string,
+    contentType: string,
+  ): Promise<void> {
+    await this.ensureContainer();
+    const data = typeof content === 'string' ? Buffer.from(content) : content;
+    await this.service
+      .getContainerClient(this.containerName)
+      .getBlockBlobClient(key)
+      .upload(data, data.length, {
+        blobHTTPHeaders: { blobContentType: contentType },
+      });
+  }
+
   async createPreviewTarget(
     key: string,
     ttlSeconds: number,

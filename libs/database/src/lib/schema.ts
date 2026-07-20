@@ -15,8 +15,9 @@ import {
   vector,
 } from 'drizzle-orm/pg-core';
 
-/** text-embedding-3-small dimensionality; changing it requires a reindex. */
-export const EMBEDDING_DIMENSIONS = 1536;
+import { EMBEDDING_DIMENSIONS } from '@doc-rag/contracts';
+
+export { EMBEDDING_DIMENSIONS };
 
 const tsvector = customType<{ data: string }>({
   dataType() {

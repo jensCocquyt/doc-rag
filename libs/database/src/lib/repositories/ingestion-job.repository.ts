@@ -1,4 +1,5 @@
 import { eq } from 'drizzle-orm';
+import { IngestionJobStatus } from '@doc-rag/contracts';
 import { Database } from '../client';
 import { ingestionJobs } from '../schema';
 
@@ -14,6 +15,21 @@ export interface IngestionJobRepository {
     documentVersionId: string;
     idempotencyKey: string;
   }): Promise<{ job: IngestionJobRecord; created: boolean }>;
+  findById(id: string): Promise<IngestionJobRecord | null>;
+  /** Records a delivery attempt starting. */
+  markProcessing(id: string, attempt: number): Promise<void>;
+  markSucceeded(id: string): Promise<void>;
+  /**
+   * Records the failure detail. `status` distinguishes a retryable failure
+   * ('queued' — the message will be redelivered), a terminal 'failed', and
+   * 'poisoned' (moved to the poison queue).
+   */
+  markFailed(
+    id: string,
+    status: Extract<IngestionJobStatus, 'queued' | 'failed' | 'poisoned'>,
+    errorCode: string,
+    errorMessage: string,
+  ): Promise<void>;
 }
 
 export class DrizzleIngestionJobRepository implements IngestionJobRepository {
@@ -37,5 +53,50 @@ export class DrizzleIngestionJobRepository implements IngestionJobRepository {
       .where(eq(ingestionJobs.idempotencyKey, input.idempotencyKey))
       .limit(1);
     return { job: existing, created: false };
+  }
+
+  async findById(id: string): Promise<IngestionJobRecord | null> {
+    const [row] = await this.db
+      .select()
+      .from(ingestionJobs)
+      .where(eq(ingestionJobs.id, id))
+      .limit(1);
+    return row ?? null;
+  }
+
+  async markProcessing(id: string, attempt: number): Promise<void> {
+    await this.db
+      .update(ingestionJobs)
+      .set({ status: 'processing', attempt, startedAt: new Date() })
+      .where(eq(ingestionJobs.id, id));
+  }
+
+  async markSucceeded(id: string): Promise<void> {
+    await this.db
+      .update(ingestionJobs)
+      .set({
+        status: 'succeeded',
+        errorCode: null,
+        errorMessage: null,
+        completedAt: new Date(),
+      })
+      .where(eq(ingestionJobs.id, id));
+  }
+
+  async markFailed(
+    id: string,
+    status: 'queued' | 'failed' | 'poisoned',
+    errorCode: string,
+    errorMessage: string,
+  ): Promise<void> {
+    await this.db
+      .update(ingestionJobs)
+      .set({
+        status,
+        errorCode,
+        errorMessage,
+        ...(status !== 'queued' ? { completedAt: new Date() } : {}),
+      })
+      .where(eq(ingestionJobs.id, id));
   }
 }

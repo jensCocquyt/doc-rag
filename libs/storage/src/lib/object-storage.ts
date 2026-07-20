@@ -40,6 +40,17 @@ export interface ObjectStorage {
   /** Streams the object's content (used by the ingestion worker, never HTTP handlers). */
   readObjectStream(key: string): Promise<NodeJS.ReadableStream>;
 
+  /**
+   * Server-side write for derived artifacts (e.g. normalized extraction
+   * output). Uploads never use this — user files reach storage only via
+   * scoped upload URLs.
+   */
+  writeObject(
+    key: string,
+    content: Buffer | string,
+    contentType: string,
+  ): Promise<void>;
+
   /** Mints a short-lived read-only URL for the object at `key`. */
   createPreviewTarget(key: string, ttlSeconds: number): Promise<PreviewTarget>;
 

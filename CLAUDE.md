@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Production-oriented RAG POC with a hard Azure budget of €130 per month.
 
-**Current state:** Phase 0 (Nx workspace, apps, libs, health checks, CI), Phase 0A (Docker Compose replaced Aspire), Phase 1 (Drizzle schema, migrations, repositories, seed) and Phase 2 (Blob storage abstraction, direct browser→Azurite upload, document endpoints) are complete. The full build plan, phased implementation guide, domain model, API outline and acceptance criteria live in `docs/PLAN.md`. Read it before implementing anything. Implement one phase per session; do not expand scope beyond the current phase. Architecture decisions are recorded in `docs/decisions/`.
+**Current state:** Phase 0 (Nx workspace, apps, libs, health checks, CI), Phase 0A (Docker Compose replaced Aspire), Phase 1 (Drizzle schema, migrations, repositories, seed), Phase 2 (Blob storage abstraction, direct browser→Azurite upload, document endpoints) and Phase 3 (PDF ingestion pipeline: parse → normalize → artifact → chunk → embed → ready, with retries and poison queue) are complete. The full build plan, phased implementation guide, domain model, API outline and acceptance criteria live in `docs/PLAN.md`. Read it before implementing anything. Implement one phase per session; do not expand scope beyond the current phase. Architecture decisions are recorded in `docs/decisions/`.
 
 ## Stack
 
@@ -80,8 +80,13 @@ Nx monorepo layout (target structure, per `docs/PLAN.md`):
 - `libs/config` — Zod-validated env loading (`loadApiEnv`/`loadWorkerEnv`, `normalizeDatabaseUrl`, `loadDotenv`).
 - `libs/testing` — integration-test helpers; integration specs run via `test-integration` targets.
 - `libs/database` — Drizzle schema (all PLAN §5 tables, pgvector + generated tsvector), migrations (`libs/database/migrations`), tenant-scoped repositories, idempotent seed. Chunks can never be inserted without a valid locator (enforced in `ChunkRepository`).
-- `libs/storage` — `ObjectStorage` boundary + `AzureBlobObjectStorage` (SAS upload/preview URLs scoped to one server-chosen blob name, verify, read stream, delete; dev-only Azurite CORS helper). File bytes never pass through the API.
-- `libs/domain`, `libs/queue`, `libs/retrieval`, `libs/ai` — added in later phases.
+- `libs/storage` — `ObjectStorage` boundary + `AzureBlobObjectStorage` (SAS upload/preview URLs scoped to one server-chosen blob name, verify, read stream, server-side artifact write, delete; dev-only Azurite CORS helper). File bytes never pass through the API.
+- `libs/document-processing` — `NormalizedDocumentElement` model (PLAN §7), `DocumentParser` interface, MIME-keyed `ParserRegistry`.
+- `libs/pdf-processing` — pdfjs-dist text extraction: pages, reading order, normalized 0..1 top-left polygons, font-size heading heuristic. Parser copies its input (pdfjs detaches buffers).
+- `libs/chunking` — deterministic chunker (never crosses pages, heading context, overlap only when splitting long runs, sha256 hashes). Token counts are a chars/4 approximation.
+- `libs/embeddings` — `EmbeddingService`: Azure OpenAI via AI SDK `embedMany` (batched) or `DeterministicEmbeddingService` behind explicit `AI_PROVIDER=fake` (local/CI without credentials; never a silent fallback).
+- `libs/queue` — `QueueConsumer`: visibility renewal at half-timeout, dequeue-count retries with exponential backoff, poison-queue move + `onPoison` callback. At-least-once; handlers must be idempotent.
+- `libs/domain`, `libs/retrieval`, `libs/ai` — added in later phases.
 - `infra/azure` — explicit Bicep (Phase 8).
 
 Do not add an abstraction unless it protects a known external boundary or has more than one expected implementation.

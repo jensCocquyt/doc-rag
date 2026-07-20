@@ -1,3 +1,66 @@
+# Phase 3 — PDF ingestion (same branch/PR as Phase 2, per Jens)
+
+## Plan
+
+- [x] Deps: `pdfjs-dist`, `ai`, `@ai-sdk/azure`; dev `pdf-lib` (test fixture PDFs).
+- [x] `libs/document-processing`: `NormalizedDocumentElement`, `PdfSourceLocation`,
+      `DocumentParser` interface, MIME-keyed `ParserRegistry`.
+- [x] `libs/pdf-processing`: pdfjs-based parser — pages, text order, normalized
+      (0..1) polygons, page dims, font-size heading heuristic. Golden tests with
+      pdf-lib-generated fixtures.
+- [x] `libs/chunking`: deterministic chunker — ~650-token target (chars/4
+      approximation), never crosses pages, heading context trail, overlap only
+      when splitting long runs, sha256 content hashes.
+- [x] `libs/embeddings`: `EmbeddingService`; `AzureOpenAiEmbeddingService`
+      (AI SDK `embedMany`, batched) + `DeterministicEmbeddingService`
+      (explicit `AI_PROVIDER=fake` for local/CI — never a silent fallback).
+- [x] `libs/queue`: consumer with visibility renewal, dequeue-count retries
+      with backoff, poison-queue move. Azurite integration tests.
+- [x] `libs/storage`: add server-side `writeObject` (normalized artifact
+      persistence from the worker).
+- [x] `libs/config`: worker env — artifacts container, poison queue, visibility/
+      dequeue settings, chunk/embedding settings, AI_PROVIDER (+ conditional
+      AZURE_OPENAI_* requirements).
+- [x] `libs/database`: job findById/markProcessing/markSucceeded/markFailed;
+      version findById/updateParseResult; document setContentHash.
+- [x] `apps/ingestion-worker`: pipeline — decode → load → processing → read blob
+      → limits → parse → persist normalized artifact → chunk → embed → wipe +
+      insert chunks → ready; idempotent replays; poison marks document failed.
+      Integration tests incl. retry/idempotency and 100-page PDF.
+- [x] Verify: pnpm check + typecheck + test:integration; browser E2E:
+      upload PDF → status ready (fake embeddings).
+
+## Phase 3 review
+
+- 13 projects green on build/lint/test/typecheck; 32 integration tests pass
+  (queue retry/poison, worker pipeline incl. 100-page PDF in ~0.8 s).
+- Browser E2E: uploaded PDF went uploading → queued → processing → ready with
+  all three apps running; Jens's real 13-page PDF produced 17 chunks with
+  heading contexts, page locators, per-line polygons and embeddings; a fake
+  "PDF" (zeros) failed permanently with parse_failed. Backlog messages from
+  Phase 2 were consumed correctly on worker start (durable handoff proven).
+- Fixed along the way: Phase 2's API integration test drained the shared dev
+  queue (stranding real queued documents) — now uses an isolated per-run queue
+  and cleans up its document rows. Stranded dev documents repaired by
+  re-enqueueing.
+- Known limitations: no /documents/:id/retry endpoint yet (a lost queue
+  message strands a 'queued' document until re-enqueued); scanned PDFs
+  rejected (no_text_content, no OCR by design); token counts are chars/4;
+  heading detection is font-size heuristic only; document DTO does not expose
+  the job's internal error code.
+
+## Decisions
+
+- Token counts are a chars/4 approximation (no tokenizer dependency in POC);
+  revisit when real evaluation lands (Phase 4+).
+- Normalized artifact JSON goes to a separate `artifacts` container keyed
+  `.../versions/{n}/normalized.json`; chunks are rebuildable from it.
+- Retry model: wipe-and-rewrite chunks per version before insert (unique
+  (version, sequence) index is the second guard).
+- Transient failure → job back to `queued` + error recorded, message redelivered
+  by visibility timeout; dequeueCount ≥ max → poison queue + job `poisoned` +
+  document `failed`.
+
 # Phase 2 — Blob Storage abstraction and direct upload
 
 Branch: `feat/phase-2-storage-upload`

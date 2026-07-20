@@ -1,0 +1,8 @@
+{
+  "name": "document-processing",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/document-processing/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {}
+}
