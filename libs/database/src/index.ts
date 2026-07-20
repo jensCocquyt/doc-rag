@@ -5,3 +5,5 @@ export * from './lib/repositories/document.repository';
 export * from './lib/repositories/document-version.repository';
 export * from './lib/repositories/ingestion-job.repository';
 export * from './lib/repositories/chunk.repository';
+export * from './lib/repositories/conversation.repository';
+export * from './lib/repositories/message.repository';
