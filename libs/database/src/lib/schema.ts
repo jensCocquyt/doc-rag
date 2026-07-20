@@ -134,29 +134,55 @@ export const ingestionJobs = pgTable(
   ],
 );
 
+/**
+ * Retrieval unit: one row per ~500-800-token piece of a parsed document
+ * version. Derived data — rebuildable from the normalized artifact — so a
+ * retried ingestion may wipe and rewrite a version's chunks. What cited
+ * answers resolve to.
+ */
 export const chunks = pgTable(
   'chunks',
   {
     id: uuid('id').primaryKey().defaultRandom(),
+    // Denormalized (derivable via document) so retrieval filters tenant in one
+    // indexed predicate without joins. The tenant-isolation boundary.
     tenantId: uuid('tenant_id')
       .notNull()
       .references(() => tenants.id),
+    // Logical file; restricts retrieval to a conversation's selected documents.
     documentId: uuid('document_id')
       .notNull()
       .references(() => documents.id),
+    // Exact uploaded binary this chunk was derived from; wipe/replace unit for
+    // retries and re-uploads.
     documentVersionId: uuid('document_version_id')
       .notNull()
       .references(() => documentVersions.id),
+    // 0-based position within the version; unique with version id, which makes
+    // ingestion retries idempotent.
     sequence: integer('sequence').notNull(),
+    // The text handed to the model as evidence.
     content: text('content').notNull(),
+    // Fingerprint of content; lets reprocessing skip unchanged chunks.
     contentHash: text('content_hash').notNull(),
+    // Retrieval sums these to stay within the context token budget.
     tokenCount: integer('token_count').notNull(),
+    // Semantic search half (HNSW, cosine). Nullable: rows may exist before
+    // their embedding batch completes.
     embedding: vector('embedding', { dimensions: EMBEDDING_DIMENSIONS }),
+    // Lexical search half. Postgres generates it from content on every write,
+    // so it can never drift; app code cannot set it.
     searchVector: tsvector('search_vector').generatedAlwaysAs(
       (): SQL => sql`to_tsvector('english', ${chunks.content})`,
     ),
+    // Section trail ("4. Results > 4.2 Revenue") for model orientation, kept
+    // out of content so it does not pollute embeddings.
     headingContext: text('heading_context'),
+    // Exact source position (page + normalized 0..1 polygons + excerpt),
+    // validated by chunkLocatorSchema before insert. Powers citation
+    // click-through and highlights; a chunk without one may not exist.
     locator: jsonb('locator').notNull(),
+    // Free-form parser extras that do not deserve columns yet.
     metadata: jsonb('metadata').notNull().default({}),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
