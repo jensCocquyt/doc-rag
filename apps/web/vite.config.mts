@@ -14,6 +14,12 @@ export default defineConfig(() => ({
   server: {
     port,
     host: 'localhost',
+    // Dev-only: forward API calls so the browser talks same-origin. The API
+    // port is fixed to the libs/config default (PORT must not live in .env).
+    proxy: {
+      '/documents': 'http://localhost:3000',
+      '/health': 'http://localhost:3000',
+    },
   },
   preview: {
     port,

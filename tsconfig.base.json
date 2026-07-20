@@ -22,6 +22,7 @@
     "paths": {
       "@doc-rag/contracts": ["./libs/contracts/src/index.ts"],
       "@doc-rag/config": ["./libs/config/src/index.ts"],
+      "@doc-rag/storage": ["./libs/storage/src/index.ts"],
       "@doc-rag/testing": ["./libs/testing/src/index.ts"],
       "@doc-rag/database": ["./libs/database/src/index.ts"]
     }

@@ -22,6 +22,21 @@ describe('loadApiEnv', () => {
     expect(env.PORT).toBe(8080);
   });
 
+  it('applies upload and storage defaults', () => {
+    const env = loadApiEnv(validEnv);
+    expect(env.AZURE_STORAGE_BLOB_CONTAINER_ORIGINALS).toBe('originals');
+    expect(env.AZURE_STORAGE_QUEUE_INGESTION).toBe('rag-ingestion');
+    expect(env.MAX_FILE_SIZE_BYTES).toBe(104857600);
+    expect(env.UPLOAD_URL_TTL_SECONDS).toBe(900);
+    expect(env.PREVIEW_URL_TTL_SECONDS).toBe(300);
+  });
+
+  it('rejects a non-positive MAX_FILE_SIZE_BYTES', () => {
+    expect(() =>
+      loadApiEnv({ ...validEnv, MAX_FILE_SIZE_BYTES: '0' }),
+    ).toThrowError(/Invalid environment configuration/);
+  });
+
   it('rejects a missing DATABASE_URL and names the variable', () => {
     const { DATABASE_URL: _omitted, ...rest } = validEnv;
     expect(() => loadApiEnv(rest)).toThrowError(/DATABASE_URL/);

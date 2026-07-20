@@ -74,6 +74,11 @@ const baseEnvSchema = z.object({
 
 export const apiEnvSchema = baseEnvSchema.extend({
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
+  AZURE_STORAGE_BLOB_CONTAINER_ORIGINALS: z.string().min(1).default('originals'),
+  AZURE_STORAGE_QUEUE_INGESTION: z.string().min(1).default('rag-ingestion'),
+  MAX_FILE_SIZE_BYTES: z.coerce.number().int().positive().default(104857600),
+  UPLOAD_URL_TTL_SECONDS: z.coerce.number().int().positive().default(900),
+  PREVIEW_URL_TTL_SECONDS: z.coerce.number().int().positive().default(300),
 });
 
 export const workerEnvSchema = baseEnvSchema;

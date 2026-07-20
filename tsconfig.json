@@ -23,6 +23,9 @@
     },
     {
       "path": "./libs/database"
+    },
+    {
+      "path": "./libs/storage"
     }
   ],
   "compilerOptions": {}
