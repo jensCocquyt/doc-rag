@@ -1,12 +1,13 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import {
-  FastifyAdapter,
-  NestFastifyApplication,
-} from '@nestjs/platform-fastify';
+import { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { loadApiEnv, loadDotenv } from '@doc-rag/config';
 import { configureDevelopmentCors } from '@doc-rag/storage';
 import { AppModule } from './app/app.module';
+import {
+  createHardenedAdapter,
+  registerHttpHardening,
+} from './app/http-hardening';
 
 async function bootstrap() {
   loadDotenv();
@@ -27,8 +28,9 @@ async function bootstrap() {
   }
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
-    new FastifyAdapter(),
+    createHardenedAdapter(env),
   );
+  await registerHttpHardening(app);
   app.enableShutdownHooks();
   await app.listen({ port: env.PORT, host: '0.0.0.0' });
   Logger.log(`API listening on http://localhost:${env.PORT}`);

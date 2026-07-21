@@ -20,7 +20,10 @@
     "db:generate": "drizzle-kit generate --config libs/database/drizzle.config.ts",
     "db:migrate": "drizzle-kit migrate --config libs/database/drizzle.config.ts",
     "db:seed": "tsx libs/database/src/seed/seed.ts",
-    "eval": "tsx tools/eval/run-eval.ts"
+    "eval": "tsx tools/eval/run-eval.ts",
+    "reindex": "tsx tools/scripts/reindex.ts",
+    "cleanup:blobs": "tsx tools/scripts/cleanup-blobs.ts",
+    "load-test": "tsx tools/scripts/load-test.ts"
   },
   "private": true,
   "packageManager": "pnpm@10.30.3",
@@ -91,6 +94,7 @@
     "@azure/msal-react": "^5.5.3",
     "@azure/storage-blob": "^12.33.0",
     "@azure/storage-queue": "^12.31.0",
+    "@fastify/rate-limit": "^11.1.0",
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
     "@nestjs/platform-express": "^11.0.0",
@@ -104,6 +108,7 @@
     "jose": "^6.2.3",
     "pdfjs-dist": "^5.4.296",
     "pg": "^8.22.0",
+    "pino": "^10.3.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^10.1.0",

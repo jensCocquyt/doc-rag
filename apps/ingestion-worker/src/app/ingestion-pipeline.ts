@@ -149,6 +149,7 @@ export class IngestionPipeline {
     message: IngestionQueueMessage,
     attempt: number,
   ): Promise<void> {
+    const startedAt = Date.now();
     const {
       documents,
       versions,
@@ -197,6 +198,18 @@ export class IngestionPipeline {
         : new Error('Failed to read stored object');
     }
     const contentHash = createHash('sha256').update(bytes).digest('hex');
+
+    // File-signature check before any parsing: MIME type is client-declared
+    // and cannot be trusted (PLAN.md Phase 10 security).
+    if (
+      document.mimeType === 'application/pdf' &&
+      !bytes.subarray(0, 5).equals(Buffer.from('%PDF-'))
+    ) {
+      throw new PermanentIngestionError(
+        'invalid_file_signature',
+        'Stored bytes are not a PDF (magic-number mismatch)',
+      );
+    }
 
     let parser;
     try {
@@ -274,8 +287,14 @@ export class IngestionPipeline {
     await documents.setContentHash(message.tenantId, document.id, contentHash);
     await documents.setStatus(message.tenantId, document.id, 'ready');
     await jobs.markSucceeded(message.jobId);
+    // Ingestion metrics (PLAN.md Phase 10): counts, durations and approximate
+    // embedding volume — never document text.
+    const embeddedTokens = documentChunks.reduce(
+      (sum, chunk) => sum + chunk.tokenCount,
+      0,
+    );
     log(
-      `job ${message.jobId} succeeded: ${normalized.pageCount} pages, ${documentChunks.length} chunks`,
+      `job ${message.jobId} succeeded: ${normalized.pageCount} pages, ${normalized.elements.length} elements, ${documentChunks.length} chunks, ~${embeddedTokens} embedded tokens, ${Date.now() - startedAt}ms total`,
     );
   }
 }
