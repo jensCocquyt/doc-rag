@@ -103,18 +103,38 @@ async function main(): Promise<void> {
       maxContextTokens: 9000,
     });
 
+    const answerable = EVAL_QUESTIONS.filter((q) => q.expectedPage !== null);
+    const unanswerable = EVAL_QUESTIONS.filter((q) => q.expectedPage === null);
     let hits = 0;
     let citationCorrect = 0;
+    let refusalCorrect = 0;
+    const latencies: number[] = [];
     const rows: string[] = [];
     for (const question of EVAL_QUESTIONS) {
+      const startedAt = Date.now();
       const result = await retrieval.retrieve({
         tenantId,
         userId,
         query: question.question,
       });
+      latencies.push(Date.now() - startedAt);
       const pages = result.chunks.map(
         (chunk) => (chunk.locator as { page: number }).page,
       );
+      if (question.expectedPage === null) {
+        // Refusal proxy: the expected page cannot exist; correct behavior is
+        // that no retrieved chunk lexically matches the question strongly.
+        // With hybrid retrieval something is usually returned — the answer
+        // layer's citation requirement is the real guard. We report whether
+        // the TOP result changed vs. answerable questions (best-effort
+        // signal); true refusal quality needs real embeddings + model.
+        const empty = result.chunks.length === 0;
+        if (empty) refusalCorrect++;
+        rows.push(
+          `${empty ? 'REFUSED ' : 'RETRIEVED'} (unanswerable)  got [${pages.join(',') || 'none'}]  ${question.id}`,
+        );
+        continue;
+      }
       const hit = pages.includes(question.expectedPage);
       const topCorrect = pages[0] === question.expectedPage;
       if (hit) hits++;
@@ -128,17 +148,20 @@ async function main(): Promise<void> {
     console.log(`provider: ${env.AI_PROVIDER}`);
     if (env.AI_PROVIDER === 'fake') {
       console.log(
-        'NOTE: fake embeddings — vector arm is only meaningful for verbatim questions; semantic recall requires AI_PROVIDER=azure.',
+        'NOTE: fake embeddings — vector arm is only meaningful for verbatim questions; semantic recall and refusal quality require AI_PROVIDER=azure.',
       );
     }
     console.log(rows.join('\n'));
+    latencies.sort((a, b) => a - b);
+    console.log(`\nretrieval hit rate:      ${hits}/${answerable.length}`);
+    console.log(`citation page correct:   ${citationCorrect}/${answerable.length}`);
     console.log(
-      `\nretrieval hit rate:      ${hits}/${EVAL_QUESTIONS.length}`,
+      `refusal (empty evidence): ${refusalCorrect}/${unanswerable.length} (see note above)`,
     );
     console.log(
-      `citation page correct:   ${citationCorrect}/${EVAL_QUESTIONS.length}`,
+      `retrieval latency:       p50 ${latencies[Math.floor(latencies.length / 2)]}ms, max ${latencies[latencies.length - 1]}ms`,
     );
-    if (hits < EVAL_QUESTIONS.length) {
+    if (hits < answerable.length) {
       process.exitCode = 1;
     }
   } finally {

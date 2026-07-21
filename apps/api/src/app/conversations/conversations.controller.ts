@@ -23,6 +23,7 @@ import {
 import { Identity, type RequestIdentity } from '../auth/auth.guard';
 import { AUDIT_REPOSITORY } from '../core.module';
 import { parseBody } from '../documents/zod-body.pipe';
+import { ChatQuotaService } from './chat-quota.service';
 import { ChatService } from './chat.service';
 import { ConversationsService } from './conversations.service';
 
@@ -31,6 +32,7 @@ export class ConversationsController {
   constructor(
     private readonly conversationsService: ConversationsService,
     private readonly chatService: ChatService,
+    private readonly chatQuota: ChatQuotaService,
     @Inject(AUDIT_REPOSITORY) private readonly audit: AuditRepository,
   ) {}
 
@@ -90,6 +92,7 @@ export class ConversationsController {
     @Res() reply: FastifyReply,
   ): Promise<void> {
     const request = parseBody(postMessageRequestSchema, body);
+    this.chatQuota.consume(identity.userId);
     await this.conversationsService.findOrThrow(identity, id);
     await this.audit.record({
       tenantId: identity.tenantId,

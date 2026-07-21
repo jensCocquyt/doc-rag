@@ -132,6 +132,13 @@ export const apiEnvSchema = storageEnvSchema
     MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(1200),
     /** Raw messages kept verbatim; older history is folded into a summary. */
     CONVERSATION_RECENT_MESSAGES: z.coerce.number().int().positive().default(10),
+    CHAT_REQUESTS_PER_USER_PER_HOUR: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(100),
+    /** JSON bodies only — file bytes never pass through the API. */
+    MAX_REQUEST_BODY_BYTES: z.coerce.number().int().positive().default(1048576),
     ...aiEnvShape,
   })
   .superRefine((env, ctx) => {

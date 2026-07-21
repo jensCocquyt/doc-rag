@@ -267,7 +267,7 @@ describe.skipIf(!configured)('IngestionPipeline (integration)', () => {
     expect(document.status).toBe('failed');
   });
 
-  it('fails permanently on an unparsable file without retrying', async () => {
+  it('fails permanently on a non-PDF payload without retrying (magic bytes)', async () => {
     const bogus = new TextEncoder().encode('this is not a pdf at all');
     const fixture = await createFixture({ pdf: bogus });
     // Permanent failure: resolves (acknowledges) instead of throwing.
@@ -278,7 +278,7 @@ describe.skipIf(!configured)('IngestionPipeline (integration)', () => {
       .from(ingestionJobs)
       .where(eq(ingestionJobs.id, fixture.jobId));
     expect(job.status).toBe('failed');
-    expect(job.errorCode).toBe('parse_failed');
+    expect(job.errorCode).toBe('invalid_file_signature');
     const [document] = await db
       .select()
       .from(documents)

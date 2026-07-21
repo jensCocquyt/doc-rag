@@ -16,7 +16,8 @@ export interface EvalPage {
 export interface EvalQuestion {
   id: string;
   question: string;
-  expectedPage: number;
+  /** null = unanswerable from the fixture document (refusal expected). */
+  expectedPage: number | null;
   /** True when the question reuses source wording (vector arm testable with fake embeddings). */
   verbatim: boolean;
 }
@@ -91,6 +92,19 @@ export const EVAL_QUESTIONS: EvalQuestion[] = [
     id: 'q7-training',
     question: 'security awareness training completion',
     expectedPage: 4,
+    verbatim: false,
+  },
+  // Unanswerable (PLAN.md Phase 10: refusal correctness measured separately).
+  {
+    id: 'q8-unanswerable-space',
+    question: 'what is the launch date of the Mars mission',
+    expectedPage: null,
+    verbatim: false,
+  },
+  {
+    id: 'q9-unanswerable-hr',
+    question: 'how many vacation days do employees in Japan get',
+    expectedPage: null,
     verbatim: false,
   },
 ];

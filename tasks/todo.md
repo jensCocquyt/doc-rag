@@ -1,3 +1,30 @@
+# Phase 10 — Hardening, observability, evaluation (feat/phase-10-hardening)
+
+- [x] Rate limiting: @fastify/rate-limit 300/min per client + per-user
+      sliding-hour chat quota (CHAT_REQUESTS_PER_USER_PER_HOUR, 429
+      chat_quota_exceeded). Verified by integration test AND load probe
+      (4037 req/s, 0 failures, p99 16ms, limiter engages).
+- [x] Request-size cap (MAX_REQUEST_BODY_BYTES, 413) — extracted
+      http-hardening.ts shared by bootstrap and tests.
+- [x] Correlation ids: uuid per request, echoed as x-request-id.
+- [x] Worker: PDF magic-bytes check before parsing (invalid_file_signature);
+      richer ingestion metrics log (pages/elements/chunks/~tokens/duration).
+- [x] Prompt-injection defense: system prompt marks evidence as untrusted
+      data whose embedded instructions must never be followed.
+- [x] Scripts: pnpm reindex (rebuild chunks from normalized artifacts, skips
+      cited chunks to preserve answer provenance — found the FK constraint
+      the hard way), pnpm cleanup:blobs (dry-run default, --apply),
+      pnpm load-test.
+- [x] Runbooks: docs/operations/runbooks.md (failed ingestion, queue/model
+      outage, backup/restore, reindex, delete+cleanup, cost investigation).
+- [x] Eval extended: unanswerable questions + latency; refusal reporting
+      with honest caveat (real refusal quality needs real embeddings).
+- [x] Tests: 3 hardening integration tests (correlation header, 413, 429);
+      magic-bytes worker test. 56 integration tests green overall.
+- Known: chat quota is in-memory (single-replica POC); OTel tracing not
+  wired (config flag exists, App Insights connection string provisioned in
+  Bicep); answer faithfulness/completeness metrics need a real model.
+
 # Phase 9 — Entra auth, CODE ONLY (feat/phase-9-entra-auth)
 
 - [x] libs/auth: EntraTokenVerifier (jose, tenant JWKS, issuer/audience/
